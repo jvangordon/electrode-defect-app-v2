@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #0d0f14;
-  --color-bg-secondary: #131620;
-  --color-bg-card: #1a1d2b;
-  --color-bg-card-hover: #1f2335;
-  --color-bg-input: #141722;
-  --color-border: #2a2d3a;
+  --color-bg-primary: #0d1017;
+  --color-bg-secondary: #0d1017;
+  --color-bg-card: #141824;
+  --color-bg-card-hover: #1a1f30;
+  --color-bg-input: #111520;
+  --color-border: #252a3a;
   --color-border-light: #353849;
 
   --color-accent: #f59e0b;
@@ -41,9 +41,44 @@ html {
 }
 
 body {
-  background: var(--color-bg-primary);
   color: var(--color-text-primary);
   min-height: 100vh;
+}
+
+/* Dark mode (default) */
+body {
+  background: var(--color-bg-primary);
+}
+
+/* Light mode overrides */
+body.light-mode {
+  background: #f5f6f8;
+  color: #1a1d2b;
+}
+
+body.light-mode .card-surface {
+  background: #ffffff;
+  border-color: #e2e5eb;
+}
+
+body.light-mode .page-bg {
+  background: #f5f6f8;
+}
+
+body.light-mode .main-content {
+  background: #f5f6f8;
+}
+
+body.light-mode .text-text-primary {
+  color: #1a1d2b;
+}
+
+body.light-mode .text-text-secondary {
+  color: #4b5068;
+}
+
+body.light-mode .text-text-muted {
+  color: #8b8fa3;
 }
 
 #root {
@@ -78,10 +113,13 @@ body {
 }
 .recharts-text {
   fill: var(--color-text-secondary) !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 .recharts-tooltip-wrapper {
   outline: none !important;
+}
+.recharts-legend-item-text {
+  font-size: 13px !important;
 }
 
 @keyframes shimmer {

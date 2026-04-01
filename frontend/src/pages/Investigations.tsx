@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { SkeletonTable, SkeletonCard } from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
+import { useTheme } from '../App';
 import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight, Sparkles } from 'lucide-react';
 import type {
   InvestigationsResponse, Investigation,
@@ -13,12 +14,20 @@ import type {
 
 type View = 'list' | 'detail' | 'electrode';
 
+function useCardClass() {
+  const { isDark } = useTheme();
+  return isDark
+    ? 'bg-[#141824] border border-[#252a3a] rounded-xl'
+    : 'bg-white border border-[#e2e5eb] rounded-xl shadow-sm';
+}
+
 export default function Investigations() {
   const [view, setView] = useState<View>('list');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvId, setSelectedInvId] = useState<number | null>(null);
   const [selectedGpn, setSelectedGpn] = useState<string | null>(null);
+  const { isDark } = useTheme();
 
   const { data: invData, loading: invLoading, refetch: refetchInv } = useApi(
     () => api.getInvestigations(statusFilter ? { status: statusFilter } : {}),
@@ -33,13 +42,15 @@ export default function Investigations() {
   const openInvestigation = (id: number) => { setSelectedInvId(id); setView('detail'); };
   const openElectrode = (gpn: string) => { setSelectedGpn(gpn); setView('electrode'); };
 
+  const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-8">
+    <div className="p-10 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-text-primary">Investigation Workflow</h1>
+        <h1 className="text-2xl font-bold" style={{ color: textPrimary }}>Investigation Workflow</h1>
         {view !== 'list' && (
           <button onClick={() => setView('list')}
-            className="text-xs text-accent hover:underline">← Back to list</button>
+            className="text-sm text-accent hover:underline font-medium">← Back to list</button>
         )}
       </div>
 
@@ -78,22 +89,34 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
   onOpenElectrode: (gpn: string) => void;
 }) {
   const investigations = invData?.investigations || [];
+  const { isDark } = useTheme();
+  const card = useCardClass();
+  const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
 
   return (
     <>
       {/* Search bar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: textMuted }} />
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search by GPN, lot, or run number..."
-            className="w-full bg-bg-input border border-border rounded-md pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/50" />
+            className="w-full border-2 rounded-lg pl-10 pr-4 py-3 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none"
+            style={{
+              background: isDark ? '#111520' : '#ffffff',
+              borderColor: isDark ? '#252a3a' : '#e2e5eb',
+              color: textPrimary,
+            }} />
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {['', 'open', 'in_progress', 'closed', 'verified'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1.5 text-xs rounded transition-colors ${
-                statusFilter === s ? 'bg-accent text-black' : 'bg-bg-card text-text-secondary border border-border hover:text-text-primary'
+              className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                statusFilter === s ? 'bg-accent text-black font-semibold' :
+                isDark ? 'bg-[#141824] text-[#9ca3af] border border-[#252a3a] hover:text-[#e5e7eb]'
+                : 'bg-white text-[#4b5068] border border-[#e2e5eb] hover:text-[#1a1d2b]'
               }`}>
               {s || 'All'}
             </button>
@@ -103,16 +126,16 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
 
       {/* Search results */}
       {searchQuery.length >= 2 && searchResults.length > 0 && (
-        <div className="bg-bg-card border border-border rounded-lg p-3">
-          <h3 className="text-xs font-medium text-text-muted mb-2">Search Results ({searchResults.length})</h3>
+        <div className={`${card} p-4`}>
+          <h3 className="text-[13px] font-semibold mb-3" style={{ color: textMuted }}>Search Results ({searchResults.length})</h3>
           <div className="space-y-1 max-h-[200px] overflow-y-auto">
             {searchResults.map((e: ElectrodeSearchResult) => (
               <div key={e.gpn} onClick={() => onOpenElectrode(e.gpn)}
-                className="flex items-center justify-between px-2 py-1.5 rounded cursor-pointer hover:bg-bg-card-hover transition-colors">
+                className="flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer hover:bg-bg-card-hover transition-colors">
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs text-text-primary">{e.gpn}</span>
-                  <span className="text-xs text-text-muted">{e.lot}</span>
-                  <span className="text-xs text-text-muted">{e.furnace_og}</span>
+                  <span className="font-mono text-[13px]" style={{ color: textPrimary }}>{e.gpn}</span>
+                  <span className="text-[13px]" style={{ color: textMuted }}>{e.lot}</span>
+                  <span className="text-[13px]" style={{ color: textMuted }}>{e.furnace_og}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {(e.defect_code_ob || e.defect_code_og || e.defect_code_of) ? (
@@ -120,7 +143,7 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
                   ) : (
                     <StatusBadge status="clean" />
                   )}
-                  <ChevronRight size={14} className="text-text-muted" />
+                  <ChevronRight size={14} style={{ color: textMuted }} />
                 </div>
               </div>
             ))}
@@ -129,22 +152,25 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
       )}
 
       {/* Investigation table */}
-      <div className="bg-bg-card border border-border/60 rounded-xl overflow-hidden">
+      <div className={`${card} overflow-hidden`}>
         {invLoading ? <div className="p-6"><SkeletonTable rows={8} /></div> : (
           <div className="max-h-[540px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-bg-card border-b-2 border-border/80 shadow-sm">
-                <tr className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
-                  <th className="px-4 py-3 text-left">ID</th>
-                  <th className="px-4 py-3 text-left">GPN</th>
-                  <th className="px-4 py-3 text-left">Defect</th>
-                  <th className="px-4 py-3 text-left">Site</th>
-                  <th className="px-4 py-3 text-left">Root Cause</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-left">Assigned</th>
-                  <th className="px-4 py-3 text-left">Due</th>
-                  <th className="px-4 py-3 text-right">Notes</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+              <thead className="sticky top-0 shadow-sm" style={{
+                background: isDark ? '#0f1320' : '#f8f9fb',
+                borderBottom: `2px solid ${isDark ? '#252a3a' : '#e2e5eb'}`,
+              }}>
+                <tr className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMuted }}>
+                  <th className="px-5 py-4 text-left">ID</th>
+                  <th className="px-5 py-4 text-left">GPN</th>
+                  <th className="px-5 py-4 text-left">Defect</th>
+                  <th className="px-5 py-4 text-left">Site</th>
+                  <th className="px-5 py-4 text-left">Root Cause</th>
+                  <th className="px-5 py-4 text-center">Status</th>
+                  <th className="px-5 py-4 text-left">Assigned</th>
+                  <th className="px-5 py-4 text-left">Due</th>
+                  <th className="px-5 py-4 text-right">Notes</th>
+                  <th className="px-5 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,26 +178,28 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
                   const isOverdue = inv.due_date && new Date(inv.due_date) < new Date() && !['closed', 'verified'].includes(inv.status);
                   return (
                     <tr key={inv.investigation_id} onClick={() => onOpenInvestigation(inv.investigation_id)}
-                      className={`border-b border-border/40 cursor-pointer transition-colors hover:bg-white/[0.03] ${
-                        isOverdue ? 'bg-danger-dim/20' : idx % 2 === 1 ? 'bg-white/[0.01]' : ''
-                      }`}>
-                      <td className="px-4 py-3 font-mono text-text-primary">#{inv.investigation_id}</td>
-                      <td className="px-4 py-3 font-mono text-accent">{inv.gpn?.slice(0, 14)}</td>
-                      <td className="px-4 py-3 text-text-secondary">{inv.defect_code}</td>
-                      <td className="px-4 py-3 text-text-secondary">{inv.defect_site}</td>
-                      <td className="px-4 py-3 text-text-secondary">{inv.root_cause_category}</td>
-                      <td className="px-4 py-3 text-center"><StatusBadge status={inv.status} /></td>
-                      <td className="px-4 py-3 text-text-secondary">{inv.assigned_to}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-sm ${isOverdue ? 'text-danger font-medium' : 'text-text-muted'}`}>
+                      className={`cursor-pointer transition-colors hover:bg-white/[0.04] ${
+                        isOverdue ? 'bg-danger-dim/20' : idx % 2 === 1 ? 'bg-white/[0.02]' : ''
+                      }`}
+                      style={{ borderBottom: `1px solid ${isDark ? '#252a3a50' : '#e2e5eb'}` }}>
+                      <td className="px-5 py-4 font-mono" style={{ color: textPrimary }}>#{inv.investigation_id}</td>
+                      <td className="px-5 py-4 font-mono text-accent">{inv.gpn?.slice(0, 14)}</td>
+                      <td className="px-5 py-4" style={{ color: textSecondary }}>{inv.defect_code}</td>
+                      <td className="px-5 py-4" style={{ color: textSecondary }}>{inv.defect_site}</td>
+                      <td className="px-5 py-4" style={{ color: textSecondary }}>{inv.root_cause_category}</td>
+                      <td className="px-5 py-4 text-center"><StatusBadge status={inv.status} /></td>
+                      <td className="px-5 py-4" style={{ color: textSecondary }}>{inv.assigned_to}</td>
+                      <td className="px-5 py-4">
+                        <span className={`text-sm ${isOverdue ? 'text-danger font-medium' : ''}`}
+                          style={{ color: isOverdue ? undefined : textMuted }}>
                           {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono">{inv.note_count}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono">{inv.action_count}</span>
+                      <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{inv.note_count}</td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="font-mono" style={{ color: textPrimary }}>{inv.action_count}</span>
                         {(inv.overdue_actions ?? 0) > 0 && (
-                          <span className="ml-1 text-danger text-xs">({inv.overdue_actions} overdue)</span>
+                          <span className="ml-1 text-danger text-[13px]">({inv.overdue_actions} overdue)</span>
                         )}
                       </td>
                     </tr>
@@ -191,6 +219,11 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
   const { data: similarData, loading: similarLoading } = useApi(() => api.getSimilarCases(id), [id]);
   const [noteText, setNoteText] = useState('');
   const [updating, setUpdating] = useState(false);
+  const { isDark } = useTheme();
+  const card = useCardClass();
+  const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
 
   const handleAddNote = async () => {
     if (!noteText.trim()) return;
@@ -212,8 +245,8 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
     refetch();
   };
 
-  if (loading) return <div className="space-y-4"><SkeletonCard height="h-32" /><SkeletonCard height="h-48" /></div>;
-  if (!data?.investigation) return <div className="text-text-muted">Investigation not found</div>;
+  if (loading) return <div className="space-y-5"><SkeletonCard height="h-36" /><SkeletonCard height="h-52" /></div>;
+  if (!data?.investigation) return <div style={{ color: textMuted }}>Investigation not found</div>;
 
   const { investigation: inv, notes, actions } = data;
 
@@ -224,27 +257,36 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+      <div className={`${card} p-6`}>
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-text-primary">Investigation #{inv.investigation_id}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold" style={{ color: textPrimary }}>Investigation #{inv.investigation_id}</h2>
               <StatusBadge status={inv.status} size="md" />
             </div>
-            <div className="text-sm text-text-muted mt-1">
+            <div className="text-sm mt-1" style={{ color: textMuted }}>
               {inv.defect_code} at {inv.defect_site} · Assigned to {inv.assigned_to}
             </div>
           </div>
           <div className="flex items-center gap-2">
             {inv.gpn && (
               <button onClick={() => onOpenElectrode(inv.gpn)}
-                className="px-3 py-1.5 text-xs bg-bg-input border border-border rounded hover:border-accent/50 text-text-secondary hover:text-accent transition-colors">
+                className="px-4 py-2.5 text-sm font-medium rounded-lg border transition-colors"
+                style={{
+                  background: isDark ? '#111520' : '#f0f1f4',
+                  borderColor: isDark ? '#252a3a' : '#e2e5eb',
+                  color: textSecondary,
+                }}>
                 View Electrode
               </button>
             )}
             {nextStatus && (
               <button onClick={() => handleStatusChange(nextStatus)} disabled={updating}
-                className="px-4 py-2 text-sm border border-text-muted/40 rounded-lg text-text-primary bg-transparent hover:bg-white/5 hover:border-accent/50 transition-colors font-medium disabled:opacity-50">
+                className="px-5 py-3 text-sm font-semibold rounded-lg border transition-colors disabled:opacity-50"
+                style={{
+                  borderColor: isDark ? '#6b728060' : '#d0d3db',
+                  color: textPrimary,
+                }}>
                 Move to {nextStatus.replace(/_/g, ' ')}
               </button>
             )}
@@ -252,62 +294,68 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
         </div>
 
         {/* Details grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 text-xs">
-          <div className="bg-bg-input rounded-lg p-3">
-            <div className="text-text-muted">GPN</div>
-            <div className="font-mono text-text-primary mt-0.5">{inv.gpn}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-5 text-sm">
+          <div className="rounded-lg p-4" style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+            <div className="text-[13px]" style={{ color: textMuted }}>GPN</div>
+            <div className="font-mono mt-1" style={{ color: textPrimary }}>{inv.gpn}</div>
           </div>
-          <div className="bg-bg-input rounded-lg p-3">
-            <div className="text-text-muted">Root Cause</div>
-            <div className="text-text-primary mt-0.5">{inv.root_cause_category}</div>
+          <div className="rounded-lg p-4" style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+            <div className="text-[13px]" style={{ color: textMuted }}>Root Cause</div>
+            <div className="mt-1" style={{ color: textPrimary }}>{inv.root_cause_category}</div>
           </div>
-          <div className="bg-bg-input rounded-lg p-3">
-            <div className="text-text-muted">Created</div>
-            <div className="text-text-primary mt-0.5">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}</div>
+          <div className="rounded-lg p-4" style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+            <div className="text-[13px]" style={{ color: textMuted }}>Created</div>
+            <div className="mt-1" style={{ color: textPrimary }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}</div>
           </div>
-          <div className="bg-bg-input rounded-lg p-3">
-            <div className="text-text-muted">Due Date</div>
-            <div className={`mt-0.5 ${inv.due_date && new Date(inv.due_date) < new Date() && !['closed','verified'].includes(inv.status) ? 'text-danger font-medium' : 'text-text-primary'}`}>
+          <div className="rounded-lg p-4" style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+            <div className="text-[13px]" style={{ color: textMuted }}>Due Date</div>
+            <div className={`mt-1 ${inv.due_date && new Date(inv.due_date) < new Date() && !['closed','verified'].includes(inv.status) ? 'text-danger font-medium' : ''}`}
+              style={{ color: inv.due_date && new Date(inv.due_date) < new Date() && !['closed','verified'].includes(inv.status) ? undefined : textPrimary }}>
               {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
             </div>
           </div>
         </div>
         {inv.root_cause_detail && (
-          <div className="mt-3 text-xs text-text-secondary bg-bg-input rounded-lg p-3">
-            <span className="text-text-muted">Detail: </span>{inv.root_cause_detail}
+          <div className="mt-4 text-sm rounded-lg p-4" style={{ background: isDark ? '#111520' : '#f0f1f4', color: textSecondary }}>
+            <span style={{ color: textMuted }}>Detail: </span>{inv.root_cause_detail}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Notes */}
-        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-          <h3 className="text-base font-semibold text-text-secondary flex items-center gap-2 mb-4">
+        <div className={`${card} p-6`}>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4" style={{ color: textSecondary }}>
             <MessageSquare size={16} /> Notes ({notes.length})
           </h3>
           <div className="space-y-3 max-h-[300px] overflow-y-auto mb-4">
             {notes.map((n: Note) => (
-              <div key={n.note_id} className="bg-bg-input rounded-lg p-4">
+              <div key={n.note_id} className="rounded-lg p-4" style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-text-primary">{n.author}</span>
-                  <span className="text-xs text-text-muted">{new Date(n.created_at).toLocaleString()}</span>
+                  <span className="text-sm font-semibold" style={{ color: textPrimary }}>{n.author}</span>
+                  <span className="text-[13px]" style={{ color: textMuted }}>{new Date(n.created_at).toLocaleString()}</span>
                 </div>
-                <p className="text-sm text-text-secondary leading-relaxed">{n.note_text}</p>
+                <p className="text-sm leading-relaxed" style={{ color: textSecondary }}>{n.note_text}</p>
               </div>
             ))}
-            {notes.length === 0 && <div className="text-text-muted text-sm text-center py-6">No notes yet</div>}
+            {notes.length === 0 && <div className="text-sm text-center py-6" style={{ color: textMuted }}>No notes yet</div>}
           </div>
           <div>
-            <label className="text-sm font-medium text-text-secondary mb-2 block">Add a note</label>
+            <label className="text-sm font-semibold mb-2 block" style={{ color: textSecondary }}>Add a note</label>
             <textarea value={noteText} onChange={e => setNoteText(e.target.value)}
               placeholder="Describe findings, observations, or next steps..."
-              rows={3}
-              className="w-full bg-bg-input border-2 border-border rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 resize-y"
+              rows={4}
+              className="w-full border-2 rounded-lg px-4 py-3 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 resize-y outline-none"
+              style={{
+                background: isDark ? '#111520' : '#ffffff',
+                borderColor: isDark ? '#252a3a' : '#e2e5eb',
+                color: textPrimary,
+              }}
               onKeyDown={e => e.key === 'Enter' && e.metaKey && handleAddNote()} />
             <div className="flex items-center justify-between mt-3">
-              <span className="text-xs text-text-muted">⌘+Enter to submit</span>
+              <span className="text-[13px]" style={{ color: textMuted }}>Cmd+Enter to submit</span>
               <button onClick={handleAddNote}
-                className="px-5 py-2.5 text-sm bg-accent text-black rounded-lg font-semibold hover:bg-accent/90 transition-colors">
+                className="px-5 py-3 text-sm bg-accent text-black rounded-lg font-semibold hover:bg-accent/90 transition-colors">
                 Add Note
               </button>
             </div>
@@ -315,8 +363,8 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
         </div>
 
         {/* Corrective Actions */}
-        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-          <h3 className="text-base font-semibold text-text-secondary flex items-center gap-2 mb-4">
+        <div className={`${card} p-6`}>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4" style={{ color: textSecondary }}>
             <CheckCircle2 size={16} /> Corrective Actions ({actions.length})
           </h3>
           <div className="space-y-3 max-h-[350px] overflow-y-auto">
@@ -326,22 +374,22 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
               const nextActionStatus = actionStatusFlow[actionStatusFlow.indexOf(a.status) + 1];
 
               return (
-                <div key={a.action_id} className={`border rounded-lg p-4 ${
-                  isOverdue ? 'border-danger/30 bg-danger-dim/20' : 'border-border/60'
-                }`}>
+                <div key={a.action_id} className={`border rounded-lg p-5 ${
+                  isOverdue ? 'border-danger/30 bg-danger-dim/20' : ''
+                }`} style={{ borderColor: isOverdue ? undefined : isDark ? '#252a3a60' : '#e2e5eb' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-text-primary">{a.title}</span>
+                    <span className="text-sm font-semibold" style={{ color: textPrimary }}>{a.title}</span>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={a.priority || 'medium'} />
                       <StatusBadge status={a.status} />
                     </div>
                   </div>
-                  <div className="text-sm text-text-muted mb-2">{a.description}</div>
+                  <div className="text-sm mb-3" style={{ color: textMuted }}>{a.description}</div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-xs text-text-muted">
+                    <div className="flex items-center gap-4 text-[13px]" style={{ color: textMuted }}>
                       <span>{a.assigned_to}</span>
                       <span className={`flex items-center gap-1 ${isOverdue ? 'text-danger' : ''}`}>
-                        <Clock size={12} />
+                        <Clock size={13} />
                         {a.due_date ? new Date(a.due_date).toLocaleDateString() : '—'}
                       </span>
                       {a.expected_savings && (
@@ -350,7 +398,12 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
                     </div>
                     {nextActionStatus && (
                       <button onClick={() => handleActionStatus(a.action_id, nextActionStatus)}
-                        className="px-3 py-1.5 text-xs bg-bg-input border border-border rounded-lg hover:border-accent/50 text-text-secondary hover:text-accent transition-colors">
+                        className="px-4 py-2 text-[13px] rounded-lg border transition-colors"
+                        style={{
+                          background: isDark ? '#111520' : '#f0f1f4',
+                          borderColor: isDark ? '#252a3a' : '#e2e5eb',
+                          color: textSecondary,
+                        }}>
                         → {nextActionStatus.replace(/_/g, ' ')}
                       </button>
                     )}
@@ -367,43 +420,44 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
         {similarData && similarData.similar_cases.length > 0 ? (
           <div className="space-y-3">
             {similarData.similar_cases.map((sc: SimilarCase) => (
-              <div key={sc.investigation.investigation_id} className="bg-bg-input rounded-lg p-3 text-xs">
-                <div className="flex items-center justify-between mb-1.5">
+              <div key={sc.investigation.investigation_id} className="rounded-lg p-4 text-[13px]"
+                style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-text-primary font-medium">#{sc.investigation.investigation_id}</span>
-                    <span className="text-text-secondary">{sc.investigation.defect_code}</span>
+                    <span className="font-mono font-semibold" style={{ color: textPrimary }}>#{sc.investigation.investigation_id}</span>
+                    <span style={{ color: textSecondary }}>{sc.investigation.defect_code}</span>
                     <StatusBadge status={sc.investigation.status} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-text-muted">Score: {sc.match_score}/3</span>
+                    <span className="font-mono" style={{ color: textMuted }}>Score: {sc.match_score}/3</span>
                   </div>
                 </div>
-                <div className="text-text-muted mb-1">{sc.match_explanation}</div>
+                <div className="mb-1" style={{ color: textMuted }}>{sc.match_explanation}</div>
                 {sc.investigation.root_cause_category && (
-                  <div className="text-text-secondary">
+                  <div style={{ color: textSecondary }}>
                     Root cause: {sc.investigation.root_cause_category}
                     {sc.investigation.root_cause_detail && ` — ${sc.investigation.root_cause_detail}`}
                   </div>
                 )}
                 {sc.investigation.corrective_action && (
-                  <div className="text-text-secondary mt-1">
+                  <div className="mt-1" style={{ color: textSecondary }}>
                     Action taken: {sc.investigation.corrective_action}
                   </div>
                 )}
                 {sc.effective_action && (
                   <div className="mt-2 flex items-center gap-1.5">
-                    <span className="px-1.5 py-0.5 text-[10px] rounded bg-success-dim text-success font-medium">Recommended Action</span>
-                    <span className="text-success text-[11px]">{sc.effective_action}</span>
+                    <span className="px-2 py-0.5 text-xs rounded bg-success-dim text-success font-semibold">Recommended Action</span>
+                    <span className="text-success text-[13px]">{sc.effective_action}</span>
                   </div>
                 )}
               </div>
             ))}
-            <div className="text-[10px] text-text-muted italic pt-1">
+            <div className="text-xs italic pt-1" style={{ color: textMuted }}>
               Similarity based on historical data patterns. Verify applicability.
             </div>
           </div>
         ) : !similarLoading ? (
-          <div className="text-xs text-text-muted text-center py-4">No similar investigations found with 2+ matching attributes.</div>
+          <div className="text-[13px] text-center py-4" style={{ color: textMuted }}>No similar investigations found with 2+ matching attributes.</div>
         ) : null}
       </AiGradientSection>
     </div>
@@ -412,27 +466,31 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
 
 function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInvestigation: (id: number) => void }) {
   const { data, loading } = useApi(() => api.getElectrode(gpn), [gpn]);
+  const { isDark } = useTheme();
+  const card = useCardClass();
+  const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
 
-  // Find investigation ID for this electrode to fetch AI analysis
   const investigationId = data?.investigations?.[0]?.investigation_id ?? null;
   const { data: aiData, loading: aiLoading } = useApi(
     () => investigationId ? api.getAiAnalysis(investigationId) : Promise.resolve(null),
     [investigationId],
   );
 
-  if (loading) return <div className="space-y-4"><SkeletonCard height="h-24" /><SkeletonCard height="h-16" /><SkeletonCard height="h-48" /></div>;
-  if (!data?.electrode) return <div className="text-text-muted">Electrode not found</div>;
+  if (loading) return <div className="space-y-5"><SkeletonCard height="h-28" /><SkeletonCard height="h-20" /><SkeletonCard height="h-52" /></div>;
+  if (!data?.electrode) return <div style={{ color: textMuted }}>Electrode not found</div>;
 
   const { electrode, bake_run, siblings, risk_factors, lifecycle, investigations } = data;
 
   return (
     <div className="space-y-8">
       {/* Electrode header */}
-      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+      <div className={`${card} p-6`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold font-mono text-text-primary">{electrode.gpn}</h2>
-            <div className="text-xs text-text-muted mt-1">
+            <h2 className="text-xl font-bold font-mono" style={{ color: textPrimary }}>{electrode.gpn}</h2>
+            <div className="text-sm mt-1" style={{ color: textMuted }}>
               Lot: {electrode.lot} · Diameter: {electrode.diameter}mm · Weight: {electrode.weight_kg}kg · Blend: {electrode.coke_blend}
             </div>
           </div>
@@ -447,13 +505,13 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
       </div>
 
       {/* 10-step lifecycle timeline */}
-      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+      <div className={`${card} p-6`}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-semibold text-text-secondary">Manufacturing Lifecycle</h3>
-          <div className="flex items-center gap-4 text-xs text-text-muted">
+          <h3 className="text-lg font-semibold" style={{ color: textSecondary }}>Manufacturing Lifecycle</h3>
+          <div className="flex items-center gap-4 text-[13px]" style={{ color: textMuted }}>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500/20 border-2 border-emerald-500"></span> Clean</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500/20 border-2 border-red-500"></span> Defect Detected</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#1a1d2b] border-2 border-[#3a3d4a]"></span> No Data</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm border-2" style={{ background: isDark ? '#141824' : '#f0f1f4', borderColor: isDark ? '#3a3d4a' : '#d0d3db' }}></span> No Data</span>
           </div>
         </div>
         <div className="overflow-x-auto pb-2">
@@ -461,30 +519,34 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
             {lifecycle.map((step: LifecycleStep, i: number) => {
               const isDefect = step.status === 'defect';
               const isClean = step.status === 'clean';
-              // Consistent 3-state grammar: green fill = clean, red fill = defect, dark outline = no data
               const nodeStyle = isDefect
                 ? 'bg-red-500/15 border-2 border-red-500/60'
                 : isClean
                 ? 'bg-emerald-500/15 border-2 border-emerald-500/60'
-                : 'bg-[#1a1d2b] border-2 border-[#3a3d4a]';
-              const labelColor = isDefect ? 'text-red-400' : isClean ? 'text-emerald-400' : 'text-text-muted';
+                : isDark
+                ? 'bg-[#141824] border-2 border-[#3a3d4a]'
+                : 'bg-[#f0f1f4] border-2 border-[#d0d3db]';
+              const labelColor = isDefect ? 'text-red-400' : isClean ? 'text-emerald-400' : '';
 
               return (
                 <div key={i} className="flex items-center flex-1 min-w-0">
-                  <div className={`flex-1 rounded-lg px-3 py-3 text-center min-h-[68px] flex flex-col items-center justify-center ${nodeStyle}`}>
-                    <div className={`text-xs font-semibold ${labelColor} leading-tight`}>{step.step_name}</div>
+                  <div className={`flex-1 rounded-lg px-3 py-4 text-center min-h-[76px] flex flex-col items-center justify-center ${nodeStyle}`}>
+                    <div className={`text-[13px] font-semibold ${labelColor} leading-tight`}
+                      style={{ color: !isDefect && !isClean ? textMuted : undefined }}>
+                      {step.step_name}
+                    </div>
                     {step.run_number && (
-                      <div className="text-[11px] font-mono text-text-muted/80 mt-1">{step.run_number}</div>
+                      <div className="text-[13px] font-mono mt-1" style={{ color: textMuted }}>{step.run_number}</div>
                     )}
                     {step.furnace && (
-                      <div className="text-[11px] text-text-muted/80">{step.furnace}</div>
+                      <div className="text-[13px]" style={{ color: textMuted }}>{step.furnace}</div>
                     )}
                     {step.defect_code && (
-                      <div className="text-[11px] font-mono font-bold text-red-400 mt-1">{step.defect_code}</div>
+                      <div className="text-[13px] font-mono font-bold text-red-400 mt-1">{step.defect_code}</div>
                     )}
                   </div>
                   {i < lifecycle.length - 1 && (
-                    <div className="w-6 flex items-center justify-center text-text-muted/40 flex-shrink-0">
+                    <div className="w-6 flex items-center justify-center flex-shrink-0" style={{ color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' }}>
                       <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M0 5h13M10 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
                   )}
@@ -495,11 +557,11 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Risk Factors */}
-        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-text-secondary mb-3">Risk Factor Attribution</h3>
-          <div className="space-y-2 text-xs">
+        <div className={`${card} p-6`}>
+          <h3 className="text-sm font-semibold mb-4" style={{ color: textSecondary }}>Risk Factor Attribution</h3>
+          <div className="space-y-2 text-sm">
             {[
               { name: 'Furnace', value: electrode.furnace_og || bake_run?.furnace, level: bake_run?.furnace },
               { name: 'Position', value: electrode.position_og ? `Position ${electrode.position_og}` : (electrode.car_deck_ob ? `Deck ${electrode.car_deck_ob}` : null) },
@@ -513,10 +575,11 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
               const riskGroup = matchedFactor?.risk_group || 'low';
 
               return (
-                <div key={f.name} className="flex items-center justify-between p-2 rounded bg-bg-input">
+                <div key={f.name} className="flex items-center justify-between p-3 rounded-lg"
+                  style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
                   <div>
-                    <span className="text-text-muted">{f.name}:</span>
-                    <span className="ml-2 text-text-primary font-medium">{f.value}</span>
+                    <span style={{ color: textMuted }}>{f.name}:</span>
+                    <span className="ml-2 font-medium" style={{ color: textPrimary }}>{f.value}</span>
                   </div>
                   <StatusBadge status={riskGroup} />
                 </div>
@@ -525,28 +588,32 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
           </div>
         </div>
 
-        {/* Risk Factors right side is blank — AI Analysis goes here in a full-width section below */}
-        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-text-secondary mb-3">
+        {/* Sibling Electrodes */}
+        <div className={`${card} p-6`}>
+          <h3 className="text-sm font-semibold mb-4" style={{ color: textSecondary }}>
             Sibling Electrodes (same graphite run: {electrode.run_number_og})
           </h3>
           <div className="max-h-[250px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-bg-card">
-                <tr className="text-text-muted uppercase tracking-wider border-b border-border">
-                  <th className="px-2 py-1 text-left">Pos</th>
-                  <th className="px-2 py-1 text-left">GPN</th>
-                  <th className="px-2 py-1 text-left">Lot</th>
-                  <th className="px-2 py-1 text-center">Defect</th>
+              <thead className="sticky top-0" style={{ background: isDark ? '#141824' : '#ffffff' }}>
+                <tr className="text-xs uppercase tracking-wider font-semibold" style={{
+                  color: textMuted,
+                  borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}`,
+                }}>
+                  <th className="px-3 py-2.5 text-left">Pos</th>
+                  <th className="px-3 py-2.5 text-left">GPN</th>
+                  <th className="px-3 py-2.5 text-left">Lot</th>
+                  <th className="px-3 py-2.5 text-center">Defect</th>
                 </tr>
               </thead>
               <tbody>
                 {siblings.map((s: Sibling) => (
-                  <tr key={s.gpn} className="border-b border-border/30 hover:bg-bg-card-hover">
-                    <td className="px-2 py-1 font-mono">{s.position_og}</td>
-                    <td className="px-2 py-1 font-mono text-text-secondary">{s.gpn?.slice(0, 12)}</td>
-                    <td className="px-2 py-1 text-text-muted">{s.lot}</td>
-                    <td className="px-2 py-1 text-center">
+                  <tr key={s.gpn} className="hover:bg-bg-card-hover"
+                    style={{ borderBottom: `1px solid ${isDark ? '#252a3a30' : '#e2e5eb'}` }}>
+                    <td className="px-3 py-2.5 font-mono" style={{ color: textPrimary }}>{s.position_og}</td>
+                    <td className="px-3 py-2.5 font-mono" style={{ color: textSecondary }}>{s.gpn?.slice(0, 12)}</td>
+                    <td className="px-3 py-2.5" style={{ color: textMuted }}>{s.lot}</td>
+                    <td className="px-3 py-2.5 text-center">
                       {(s.defect_code_og || s.defect_code_of) ? (
                         <span className="text-danger font-mono">{s.defect_code_og || s.defect_code_of}</span>
                       ) : (
@@ -559,32 +626,33 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
             </table>
           </div>
           {siblings.length > 0 && (
-            <div className="mt-2 text-[10px] text-text-muted">
+            <div className="mt-3 text-[13px]" style={{ color: textMuted }}>
               {siblings.filter((s: Sibling) => s.defect_code_og || s.defect_code_of).length} of {siblings.length} siblings also defective
             </div>
           )}
         </div>
       </div>
 
-      {/* AI Analysis (Mock GenAI Feature A) — AFTER lifecycle/risk, BEFORE sibling analysis */}
+      {/* AI Analysis */}
       {investigationId && (
         <AiAnalysisSection data={aiData} loading={aiLoading} />
       )}
 
       {/* Existing investigations for this GPN */}
       {investigations.length > 0 && (
-        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-          <h3 className="text-sm font-semibold text-text-secondary mb-3">Existing Investigations</h3>
-          <div className="space-y-1">
+        <div className={`${card} p-6`}>
+          <h3 className="text-sm font-semibold mb-3" style={{ color: textSecondary }}>Existing Investigations</h3>
+          <div className="space-y-2">
             {investigations.map((inv: Investigation) => (
               <div key={inv.investigation_id} onClick={() => onOpenInvestigation(inv.investigation_id)}
-                className="flex items-center justify-between p-2.5 rounded cursor-pointer hover:bg-bg-card-hover border border-border/50">
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="font-mono text-text-primary">#{inv.investigation_id}</span>
-                  <span className="text-text-muted">{inv.root_cause_category}</span>
+                className="flex items-center justify-between p-3.5 rounded-lg cursor-pointer hover:bg-bg-card-hover border transition-colors"
+                style={{ borderColor: isDark ? '#252a3a50' : '#e2e5eb' }}>
+                <div className="flex items-center gap-3 text-[13px]">
+                  <span className="font-mono font-medium" style={{ color: textPrimary }}>#{inv.investigation_id}</span>
+                  <span style={{ color: textMuted }}>{inv.root_cause_category}</span>
                   <StatusBadge status={inv.status} />
                 </div>
-                <span className="text-xs text-text-muted">
+                <span className="text-[13px]" style={{ color: textMuted }}>
                   {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}
                 </span>
               </div>
@@ -605,26 +673,29 @@ function AiGradientSection({ title, label, loading, children }: {
   children: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const { isDark } = useTheme();
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
 
   return (
-    <div className="rounded-lg p-[1px] bg-gradient-to-r from-amber-500/30 via-orange-500/20 to-amber-500/30">
-      <div className="bg-bg-card rounded-lg p-4">
+    <div className="rounded-xl p-[1px] bg-gradient-to-r from-amber-500/30 via-orange-500/20 to-amber-500/30">
+      <div className="rounded-xl p-5" style={{ background: isDark ? '#141824' : '#ffffff' }}>
         <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-          <h3 className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: textSecondary }}>
             <Sparkles size={14} className="text-amber-400" />
             {title}
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium ml-1">{label}</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-semibold ml-1">{label}</span>
           </h3>
-          <button className="text-xs text-text-muted hover:text-text-primary">
+          <button className="text-[13px] hover:text-text-primary" style={{ color: textMuted }}>
             {expanded ? '▾' : '▸'}
           </button>
         </div>
         {expanded && (
           loading ? (
-            <div className="space-y-2">
-              <div className="skeleton h-4 w-3/4 rounded" />
-              <div className="skeleton h-4 w-full rounded" />
-              <div className="skeleton h-4 w-5/6 rounded" />
+            <div className="space-y-3">
+              <div className="skeleton h-5 w-3/4 rounded" />
+              <div className="skeleton h-5 w-full rounded" />
+              <div className="skeleton h-5 w-5/6 rounded" />
             </div>
           ) : children
         )}
@@ -634,41 +705,47 @@ function AiGradientSection({ title, label, loading, children }: {
 }
 
 function AiAnalysisSection({ data, loading }: { data: AiAnalysisResponse | null; loading: boolean }) {
+  const { isDark } = useTheme();
+  const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
+
   return (
     <AiGradientSection title="AI Analysis" label="AI-Generated" loading={loading}>
       {data ? (
         <div className="space-y-3">
           {/* Confidence */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-text-muted">Confidence:</span>
-            <div className="flex-1 max-w-[120px] bg-bg-input rounded-full h-3">
+          <div className="flex items-center gap-2 text-[13px]">
+            <span style={{ color: textMuted }}>Confidence:</span>
+            <div className="flex-1 max-w-[120px] rounded-full h-3" style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
               <div
                 className="h-full rounded-full bg-amber-400"
                 style={{ width: `${(data.confidence * 100)}%` }}
               />
             </div>
-            <span className="font-mono text-text-primary">{(data.confidence * 100).toFixed(0)}%</span>
+            <span className="font-mono" style={{ color: textPrimary }}>{(data.confidence * 100).toFixed(0)}%</span>
           </div>
 
           {/* Analysis text */}
-          <div className="text-xs text-text-secondary whitespace-pre-line" style={{ lineHeight: 1.6 }}>
+          <div className="text-[13px] whitespace-pre-line" style={{ lineHeight: 1.6, color: textSecondary }}>
             {data.analysis}
           </div>
 
           {/* Factors */}
           {data.factors.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="text-[10px] text-text-muted uppercase tracking-wider">Contributing Factors</div>
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wider font-semibold" style={{ color: textMuted }}>Contributing Factors</div>
               {data.factors.map((f: AiAnalysisFactor, i: number) => (
-                <div key={i} className="flex items-start gap-2 text-xs bg-bg-input rounded p-2">
-                  <span className={`px-1.5 py-0.5 text-[10px] rounded font-medium shrink-0 ${
+                <div key={i} className="flex items-start gap-2 text-[13px] rounded-lg p-3"
+                  style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+                  <span className={`px-2 py-0.5 text-xs rounded font-semibold shrink-0 ${
                     f.impact === 'high' ? 'bg-danger-dim text-danger' :
                     f.impact === 'medium' ? 'bg-warning-dim text-warning' :
                     'bg-success-dim text-success'
                   }`}>{f.impact}</span>
                   <div>
-                    <div className="font-medium text-text-primary">{f.name}</div>
-                    <div className="text-text-muted mt-0.5">{f.detail}</div>
+                    <div className="font-semibold" style={{ color: textPrimary }}>{f.name}</div>
+                    <div className="mt-0.5" style={{ color: textMuted }}>{f.detail}</div>
                   </div>
                 </div>
               ))}
@@ -676,18 +753,18 @@ function AiAnalysisSection({ data, loading }: { data: AiAnalysisResponse | null;
           )}
 
           {/* Recommendation */}
-          <div className="bg-amber-500/[0.08] border-l-[3px] border-l-amber-500 rounded-r-md p-3 text-xs">
-            <div className="text-[10px] text-amber-400 uppercase tracking-wider mb-1">Recommendation</div>
-            <div className="text-text-primary">{data.recommendation}</div>
+          <div className="bg-amber-500/[0.08] border-l-[3px] border-l-amber-500 rounded-r-md p-4 text-[13px]">
+            <div className="text-xs text-amber-400 uppercase tracking-wider font-semibold mb-1">Recommendation</div>
+            <div style={{ color: textPrimary }}>{data.recommendation}</div>
           </div>
 
           {/* Disclaimer */}
-          <div className="text-[10px] text-text-muted italic pt-1">
+          <div className="text-xs italic pt-1" style={{ color: textMuted }}>
             Generated from historical data patterns. Verify with process engineering.
           </div>
         </div>
       ) : (
-        <div className="text-xs text-text-muted text-center py-4">No analysis available for this electrode.</div>
+        <div className="text-[13px] text-center py-4" style={{ color: textMuted }}>No analysis available for this electrode.</div>
       )}
     </AiGradientSection>
   );

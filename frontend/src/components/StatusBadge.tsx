@@ -37,10 +37,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function StatusBadge({ status, size = 'sm' }: StatusBadgeProps) {
   const colorClass = STATUS_COLORS[status] || STATUS_COLORS['no_data'];
-  const sizeClass = size === 'sm' ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs';
+  const sizeClass = size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3.5 py-1 text-[13px]';
 
   return (
-    <span className={`inline-flex items-center rounded-full font-medium border ${colorClass} ${sizeClass}`}>
+    <span className={`inline-flex items-center rounded-full font-semibold border ${colorClass} ${sizeClass}`}>
       {status.replace(/_/g, ' ')}
     </span>
   );

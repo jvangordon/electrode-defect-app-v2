@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, GitCompareArrows, AlertTriangle, TrendingUp, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, GitCompareArrows, AlertTriangle, TrendingUp, Search, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { useState } from 'react';
+import { useTheme } from '../App';
 
 const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Operations' },
@@ -28,6 +29,7 @@ function EdrsLogo({ size = 32 }: { size?: number }) {
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { isDark, toggle } = useTheme();
 
   return (
     <aside
@@ -37,17 +39,39 @@ export default function Sidebar() {
       style={{ background: '#0a0c10', borderRight: '1px solid #1e2130' }}
     >
       {/* Logo area */}
-      <div className={`flex items-center gap-3 px-5 py-6 mb-4 ${collapsed ? 'justify-center px-3' : ''}`}>
+      <div className={`flex items-center gap-3 px-5 py-6 mb-2 ${collapsed ? 'justify-center px-3' : ''}`}>
         <div className="text-accent flex-shrink-0">
           <EdrsLogo size={collapsed ? 28 : 34} />
         </div>
         {!collapsed && (
-          <div>
+          <div className="flex-1">
             <div className="text-base font-bold text-text-primary tracking-wide">EDRS</div>
             <div className="text-xs text-text-muted tracking-widest uppercase mt-0.5">Electrode Defect</div>
           </div>
         )}
+        {!collapsed && (
+          <button
+            onClick={toggle}
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-amber-400"
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        )}
       </div>
+
+      {/* Theme toggle for collapsed mode */}
+      {collapsed && (
+        <div className="flex justify-center mb-2">
+          <button
+            onClick={toggle}
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-amber-400"
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1.5">
@@ -57,7 +81,7 @@ export default function Sidebar() {
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3.5 px-4 py-3.5 rounded-lg text-[15px] font-medium transition-all ${
+              `flex items-center gap-3.5 px-5 py-3.5 rounded-lg text-[15px] font-medium transition-all ${
                 isActive
                   ? 'bg-amber-500/10 text-amber-400 border-l-[3px] border-l-amber-500 shadow-sm'
                   : 'text-[#8b8fa3] hover:text-text-primary hover:bg-[#141722]'
@@ -74,7 +98,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="mt-auto border-t border-[#1e2130]">
         {!collapsed && (
-          <div className="px-5 py-4 flex items-center gap-2 text-xs text-text-muted/60">
+          <div className="px-5 py-4 flex items-center gap-2 text-[13px] text-text-muted/60">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FF3621]"></span>
             <span>Powered by Databricks</span>
           </div>
