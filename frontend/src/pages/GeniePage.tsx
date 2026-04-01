@@ -8,8 +8,9 @@ export default function GeniePage() {
   const genieRoomUrl = 'https://dbc-7816609d-d7c1.cloud.databricks.com/genie/rooms/01f12de1e7b3163881fbeeba04111056?o=7474650189132115';
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-10 py-6">
+    <div className="flex flex-col" style={{ flex: 1, minHeight: 0 }}>
+      {/* Header — fixed height */}
+      <div className="flex items-center justify-between px-10 py-6 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-3" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>
             <Sparkles size={24} className="text-amber-400" />
@@ -34,15 +35,17 @@ export default function GeniePage() {
           <ExternalLink size={14} />
         </a>
       </div>
-      <div className="flex-1 px-10 pb-6">
+
+      {/* Iframe — fills all remaining vertical space */}
+      <div className="px-10 pb-6" style={{ flex: 1, minHeight: 0 }}>
         <div
-          className="w-full h-full rounded-xl overflow-hidden"
-          style={{ border: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}
+          className="w-full rounded-xl overflow-hidden"
+          style={{ border: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}`, height: '100%' }}
         >
           <iframe
             src={iframeSrc}
             title="Databricks Genie Explorer"
-            style={{ width: '100%', height: '100%', border: 'none' }}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             allow="clipboard-write"
           />
         </div>

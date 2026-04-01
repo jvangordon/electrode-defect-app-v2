@@ -68,12 +68,14 @@ function AppShell() {
         </Routes>
       </main>
 
-      {/* Persistent Genie iframe — rendered once, visibility toggled */}
+      {/* Persistent Genie iframe — rendered once, visibility toggled.
+          Uses h-screen + flex-col so the iframe fills remaining vertical space. */}
       <div
-        className="flex-1 min-h-screen overflow-auto main-content"
+        className="flex-1 h-screen overflow-hidden main-content"
         style={{
           background: isDark ? '#0d1017' : '#f5f6f8',
           display: isGeniePage ? 'flex' : 'none',
+          flexDirection: 'column',
         }}
       >
         <GeniePage />
