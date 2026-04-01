@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, GitCompareArrows, AlertTriangle, TrendingUp, Search, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, GitCompareArrows, AlertTriangle, TrendingUp, Search, ChevronLeft, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from '../App';
 
@@ -27,7 +27,7 @@ function EdrsLogo({ size = 32 }: { size?: number }) {
   );
 }
 
-export default function Sidebar() {
+export default function Sidebar({ onOpenSettings, onOpenSearch }: { onOpenSettings?: () => void; onOpenSearch?: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const { isDark, toggle } = useTheme();
 
@@ -94,6 +94,26 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Settings & Search buttons */}
+      <div className={`px-3 mt-4 space-y-1.5 ${collapsed ? 'flex flex-col items-center' : ''}`}>
+        {onOpenSearch && (
+          <button onClick={onOpenSearch}
+            className={`flex items-center gap-3.5 px-5 py-3 rounded-lg text-[15px] font-medium transition-all text-[#8b8fa3] hover:text-text-primary hover:bg-[#141722] w-full ${collapsed ? 'justify-center px-3' : ''}`}
+            title={collapsed ? 'Search Knowledge (⌘K)' : undefined}>
+            <Search size={20} strokeWidth={1.8} className="flex-shrink-0" />
+            {!collapsed && <span>Search <kbd className="ml-auto text-xs opacity-50">⌘K</kbd></span>}
+          </button>
+        )}
+        {onOpenSettings && (
+          <button onClick={onOpenSettings}
+            className={`flex items-center gap-3.5 px-5 py-3 rounded-lg text-[15px] font-medium transition-all text-[#8b8fa3] hover:text-text-primary hover:bg-[#141722] w-full ${collapsed ? 'justify-center px-3' : ''}`}
+            title={collapsed ? 'Settings' : undefined}>
+            <Settings size={20} strokeWidth={1.8} className="flex-shrink-0" />
+            {!collapsed && <span>Settings</span>}
+          </button>
+        )}
+      </div>
 
       {/* Footer */}
       <div className="mt-auto border-t border-[#1e2130]">

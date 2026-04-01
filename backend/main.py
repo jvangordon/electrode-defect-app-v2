@@ -6,13 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import comparison, anomaly, equipment, investigation, dashboard
+from backend.routers import comparison, anomaly, equipment, investigation, dashboard, settings
 
 app = FastAPI(title="EDRS — Electrode Defect Reduction System", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:8000"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,6 +23,7 @@ app.include_router(comparison.router, prefix="/api")
 app.include_router(anomaly.router, prefix="/api")
 app.include_router(equipment.router, prefix="/api")
 app.include_router(investigation.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 
 @app.get("/api/health")

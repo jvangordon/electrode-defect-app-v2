@@ -10,6 +10,7 @@ import type {
   Note, CorrectiveAction, LifecycleStep,
   Sibling, RiskFactor, ElectrodeSearchResult,
   AiAnalysisResponse, AiAnalysisFactor, SimilarCase,
+  Recommendation,
 } from '../types';
 
 type View = 'list' | 'detail' | 'electrode';
@@ -414,6 +415,77 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
           </div>
         </div>
       </div>
+
+      {/* Recommended Actions */}
+      {similarData && similarData.recommendations && similarData.recommendations.length > 0 && (
+        <AiGradientSection title="Recommended Actions" label="AI-Suggested" loading={similarLoading}>
+          <div className="space-y-3">
+            {similarData.recommendations.map((rec: Recommendation) => (
+              <div key={rec.action_type}
+                className={`rounded-lg p-4 border-l-4 ${
+                  rec.is_recommended ? 'border-l-emerald-500' :
+                  rec.is_ineffective ? 'border-l-red-500' :
+                  'border-l-gray-500'
+                }`}
+                style={{ background: isDark ? '#111520' : '#f0f1f4' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold capitalize" style={{ color: textPrimary }}>
+                      {rec.action_type}
+                    </span>
+                    {rec.is_recommended && (
+                      <span className="px-2 py-0.5 text-xs rounded bg-emerald-500/10 text-emerald-400 font-semibold">Recommended</span>
+                    )}
+                    {rec.is_ineffective && (
+                      <span className="px-2 py-0.5 text-xs rounded bg-red-500/10 text-red-400 font-semibold">Not Effective</span>
+                    )}
+                  </div>
+                  <span className="text-xs font-mono" style={{ color: textMuted }}>
+                    {rec.verified_effective} of {rec.total_count} effective
+                  </span>
+                </div>
+
+                {rec.avg_improvement_pct !== null && (
+                  <div className="text-[13px] mb-2" style={{ color: textSecondary }}>
+                    Avg {rec.avg_improvement_pct > 0 ? '' : '-'}{Math.abs(rec.avg_improvement_pct)}% defect rate {rec.avg_improvement_pct > 0 ? 'reduction' : 'increase'}
+                  </div>
+                )}
+
+                {/* Success rate bar */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex-1 rounded-full h-2" style={{ background: isDark ? '#252a3a' : '#e2e5eb' }}>
+                    <div
+                      className={`h-full rounded-full ${
+                        rec.success_rate >= 0.6 ? 'bg-emerald-500' :
+                        rec.success_rate >= 0.3 ? 'bg-amber-500' :
+                        'bg-red-500'
+                      }`}
+                      style={{ width: `${Math.max(rec.success_rate * 100, 2)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono w-10 text-right" style={{ color: textMuted }}>
+                    {Math.round(rec.success_rate * 100)}%
+                  </span>
+                </div>
+
+                {rec.example_titles.length > 0 && (
+                  <div className="text-xs" style={{ color: textMuted }}>
+                    Examples: {rec.example_titles.map((t, i) => (
+                      <span key={i}>{i > 0 ? ', ' : ''}"{t}"</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="text-xs italic pt-1" style={{ color: textMuted }}>
+              Recommendations based on historical corrective action outcomes. Verify applicability with process engineering.
+            </div>
+            <div className="text-xs" style={{ color: textMuted }}>
+              Based on {similarData.similar_cases.length} similar past investigation{similarData.similar_cases.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+        </AiGradientSection>
+      )}
 
       {/* Similar Cases (AI Feature B) */}
       <AiGradientSection title="Similar Past Investigations" label="AI-Suggested" loading={similarLoading}>

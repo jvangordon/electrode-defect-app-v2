@@ -93,6 +93,7 @@ def create_database():
 
 
 DDL = """
+DROP TABLE IF EXISTS app_settings CASCADE;
 DROP TABLE IF EXISTS corrective_actions CASCADE;
 DROP TABLE IF EXISTS investigation_notes CASCADE;
 DROP TABLE IF EXISTS investigations CASCADE;
@@ -242,6 +243,13 @@ CREATE TABLE corrective_actions (
     completed_at TIMESTAMP,
     verified_at TIMESTAMP,
     verification_notes TEXT
+);
+
+CREATE TABLE app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_electrodes_lot ON electrodes(lot);
@@ -834,6 +842,166 @@ def seed_investigations(cur, all_electrodes, all_runs):
     print(f"  {len(investigations)} investigations created with notes and actions")
 
 
+def seed_app_settings(cur):
+    print("Seeding app_settings...")
+    settings = [
+        ('spc_z_threshold', '1.5', 'Z-score threshold for SPC anomaly flagging on bake runs. Parameters exceeding this many standard deviations are flagged.'),
+        ('defect_rate_anomaly_threshold', '0.05', 'Defect rate above which a run is considered anomalous (0.05 = 5%)'),
+        ('car_deck_high_risk_cutoff', '7', 'Car deck number at or above which an electrode is considered high-risk position'),
+        ('lot_high_risk_defect_rate', '0.05', 'Lot defect rate at or above which a lot is classified as high-risk tier (0.05 = 5%)'),
+    ]
+    for key, value, desc in settings:
+        cur.execute(
+            "INSERT INTO app_settings (key, value, description) VALUES (%s, %s, %s)",
+            (key, value, desc),
+        )
+    print(f"  {len(settings)} settings created")
+
+
+def add_search_vectors(cur):
+    """Add tsvector columns and GIN indexes for full-text search."""
+    print("Adding search vectors and GIN indexes...")
+
+    # investigations
+    cur.execute("ALTER TABLE investigations ADD COLUMN IF NOT EXISTS search_vector tsvector")
+    cur.execute("""
+        UPDATE investigations SET search_vector =
+          to_tsvector('english',
+            coalesce(root_cause_detail, '') || ' ' ||
+            coalesce(corrective_action, '') || ' ' ||
+            coalesce(effectiveness_notes, '') || ' ' ||
+            coalesce(defect_code, '') || ' ' ||
+            coalesce(defect_site, '')
+          )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_investigations_search ON investigations USING GIN(search_vector)")
+
+    # investigation_notes
+    cur.execute("ALTER TABLE investigation_notes ADD COLUMN IF NOT EXISTS search_vector tsvector")
+    cur.execute("UPDATE investigation_notes SET search_vector = to_tsvector('english', coalesce(note_text, ''))")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_notes_search ON investigation_notes USING GIN(search_vector)")
+
+    # corrective_actions
+    cur.execute("ALTER TABLE corrective_actions ADD COLUMN IF NOT EXISTS search_vector tsvector")
+    cur.execute("""
+        UPDATE corrective_actions SET search_vector =
+          to_tsvector('english',
+            coalesce(title, '') || ' ' ||
+            coalesce(description, '') || ' ' ||
+            coalesce(verification_notes, '')
+          )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_actions_search ON corrective_actions USING GIN(search_vector)")
+
+    # Add triggers to keep search_vector updated
+    cur.execute("""
+        CREATE OR REPLACE FUNCTION investigations_search_trigger() RETURNS trigger AS $$
+        BEGIN
+          NEW.search_vector := to_tsvector('english',
+            coalesce(NEW.root_cause_detail, '') || ' ' ||
+            coalesce(NEW.corrective_action, '') || ' ' ||
+            coalesce(NEW.effectiveness_notes, '') || ' ' ||
+            coalesce(NEW.defect_code, '') || ' ' ||
+            coalesce(NEW.defect_site, '')
+          );
+          RETURN NEW;
+        END
+        $$ LANGUAGE plpgsql
+    """)
+    cur.execute("DROP TRIGGER IF EXISTS trig_investigations_search ON investigations")
+    cur.execute("""
+        CREATE TRIGGER trig_investigations_search
+        BEFORE INSERT OR UPDATE ON investigations
+        FOR EACH ROW EXECUTE FUNCTION investigations_search_trigger()
+    """)
+
+    cur.execute("""
+        CREATE OR REPLACE FUNCTION notes_search_trigger() RETURNS trigger AS $$
+        BEGIN
+          NEW.search_vector := to_tsvector('english', coalesce(NEW.note_text, ''));
+          RETURN NEW;
+        END
+        $$ LANGUAGE plpgsql
+    """)
+    cur.execute("DROP TRIGGER IF EXISTS trig_notes_search ON investigation_notes")
+    cur.execute("""
+        CREATE TRIGGER trig_notes_search
+        BEFORE INSERT OR UPDATE ON investigation_notes
+        FOR EACH ROW EXECUTE FUNCTION notes_search_trigger()
+    """)
+
+    cur.execute("""
+        CREATE OR REPLACE FUNCTION actions_search_trigger() RETURNS trigger AS $$
+        BEGIN
+          NEW.search_vector := to_tsvector('english',
+            coalesce(NEW.title, '') || ' ' ||
+            coalesce(NEW.description, '') || ' ' ||
+            coalesce(NEW.verification_notes, '')
+          );
+          RETURN NEW;
+        END
+        $$ LANGUAGE plpgsql
+    """)
+    cur.execute("DROP TRIGGER IF EXISTS trig_actions_search ON corrective_actions")
+    cur.execute("""
+        CREATE TRIGGER trig_actions_search
+        BEFORE INSERT OR UPDATE ON corrective_actions
+        FOR EACH ROW EXECUTE FUNCTION actions_search_trigger()
+    """)
+
+    print("  Search vectors and triggers created")
+
+
+def add_defect_rate_columns(cur):
+    """Add defect_rate_before/after to corrective_actions and populate for verified actions."""
+    print("Adding defect_rate_before/after to corrective_actions...")
+
+    cur.execute("ALTER TABLE corrective_actions ADD COLUMN IF NOT EXISTS defect_rate_before REAL")
+    cur.execute("ALTER TABLE corrective_actions ADD COLUMN IF NOT EXISTS defect_rate_after REAL")
+
+    # Populate for completed/verified actions
+    cur.execute("""
+        SELECT a.action_id, a.investigation_id, a.completed_at,
+               i.run_number
+        FROM corrective_actions a
+        JOIN investigations i ON a.investigation_id = i.investigation_id
+        WHERE (a.status = 'completed' OR a.verified_at IS NOT NULL)
+          AND i.run_number IS NOT NULL
+    """)
+    actions = [dict(r) for r in cur.fetchall()]
+
+    for action in actions:
+        run_number = action["run_number"]
+        # Get the defect_rate of the triggering run
+        cur.execute("SELECT defect_rate, furnace, start_time FROM runs WHERE run_number = %s", (run_number,))
+        run_row = cur.fetchone()
+        if not run_row:
+            continue
+        defect_rate_before = run_row["defect_rate"]
+        furnace = run_row["furnace"]
+        start_time = run_row["start_time"]
+
+        # Get next 5 runs on same furnace after the action's run
+        cur.execute("""
+            SELECT defect_rate FROM runs
+            WHERE furnace = %s AND start_time > %s
+            ORDER BY start_time
+            LIMIT 5
+        """, (furnace, start_time))
+        next_runs = cur.fetchall()
+
+        defect_rate_after = None
+        if next_runs:
+            defect_rate_after = round(sum(r["defect_rate"] for r in next_runs) / len(next_runs), 4)
+
+        cur.execute(
+            "UPDATE corrective_actions SET defect_rate_before = %s, defect_rate_after = %s WHERE action_id = %s",
+            (defect_rate_before, defect_rate_after, action["action_id"]),
+        )
+
+    print(f"  Updated {len(actions)} corrective actions with before/after rates")
+
+
 def main():
     print("=" * 60)
     print("EDRS v2 — Seeding Database")
@@ -856,7 +1024,14 @@ def main():
     seed_compounding_rates(cur)
     seed_composition_risk(cur)
     seed_investigations(cur, all_electrodes, all_runs)
+    seed_app_settings(cur)
 
+    conn.commit()
+
+    # Post-commit operations that need the data to exist
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    add_defect_rate_columns(cur)
+    add_search_vectors(cur)
     conn.commit()
     cur.close()
     conn.close()

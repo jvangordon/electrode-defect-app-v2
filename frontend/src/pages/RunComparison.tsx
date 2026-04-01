@@ -5,9 +5,10 @@ import { SkeletonTable, SkeletonChart } from '../components/LoadingSkeleton';
 import StatusBadge, { DefectRateBadge } from '../components/StatusBadge';
 import ChartTooltip from '../components/ChartTooltip';
 import { useTheme } from '../App';
-import { GitCompareArrows } from 'lucide-react';
+import { GitCompareArrows, TrendingUp } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  ScatterChart, Scatter, ZAxis,
 } from 'recharts';
 import type { Run, Electrode, ComparisonResult, ParamDiff, SensorReading } from '../types';
 
@@ -18,17 +19,29 @@ function useCardClass() {
     : 'bg-white border border-[#e2e5eb] rounded-xl shadow-sm';
 }
 
+type Mode = 'compare' | 'trend';
+
 export default function RunComparison() {
   const [department, setDepartment] = useState<'bake' | 'graphite'>('bake');
   const [furnaceFilter, setFurnaceFilter] = useState('');
   const [selectedRuns, setSelectedRuns] = useState<string[]>([]);
   const [comparing, setComparing] = useState(false);
+  const [mode, setMode] = useState<Mode>('compare');
+  const [trendFurnace, setTrendFurnace] = useState('');
   const { isDark } = useTheme();
   const card = useCardClass();
 
   const { data: runData, loading: runsLoading } = useApi(
     () => api.getRuns({ department, limit: '100', ...(furnaceFilter ? { furnace: furnaceFilter } : {}) }),
     [department, furnaceFilter],
+  );
+
+  // Trend mode: fetch last 30 runs for selected furnace
+  const { data: trendData, loading: trendLoading } = useApi(
+    () => mode === 'trend' && trendFurnace
+      ? api.getRuns({ department, furnace: trendFurnace, limit: '30' })
+      : Promise.resolve(null),
+    [mode, department, trendFurnace],
   );
 
   const { data: compData, loading: compLoading } = useApi(
@@ -39,10 +52,18 @@ export default function RunComparison() {
   );
 
   const runs = runData?.runs || [];
+  const trendRuns = trendData?.runs || [];
   const furnaces = useMemo(() => {
     const set = new Set<string>(runs.map((r: Run) => r.furnace));
     return [...set].sort();
   }, [runs]);
+
+  // Set default trend furnace when furnaces load
+  useMemo(() => {
+    if (mode === 'trend' && !trendFurnace && furnaces.length > 0) {
+      setTrendFurnace(furnaces[0]);
+    }
+  }, [mode, furnaces, trendFurnace]);
 
   const toggleRun = (runNumber: string) => {
     setComparing(false);
@@ -57,17 +78,49 @@ export default function RunComparison() {
     if (selectedRuns.length === 2) setComparing(true);
   };
 
+  const handleDotClick = (runNumber: string) => {
+    toggleRun(runNumber);
+    if (selectedRuns.length === 1 && !selectedRuns.includes(runNumber)) {
+      // Two runs will be selected, switch to compare mode
+      setTimeout(() => {
+        setMode('compare');
+        setComparing(true);
+      }, 100);
+    }
+  };
+
   const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
-  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
   const textMuted = isDark ? '#6b7280' : '#8b8fa3';
 
   return (
     <div className="p-10 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: textPrimary }}>Run Comparison</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: textPrimary }}>Run Comparison</h1>
+          {/* Mode toggle — segmented control */}
+          <div className="flex rounded-lg overflow-hidden border"
+            style={{ borderColor: isDark ? '#252a3a' : '#e2e5eb' }}>
+            <button onClick={() => { setMode('compare'); setComparing(false); }}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold transition-colors ${
+                mode === 'compare'
+                  ? 'bg-accent text-black'
+                  : isDark ? 'bg-[#111520] text-[#9ca3af] hover:text-[#e5e7eb]' : 'bg-[#f0f1f4] text-[#4b5068] hover:text-[#1a1d2b]'
+              }`}>
+              <GitCompareArrows size={14} /> Compare Two
+            </button>
+            <button onClick={() => { setMode('trend'); setComparing(false); setSelectedRuns([]); }}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold transition-colors ${
+                mode === 'trend'
+                  ? 'bg-accent text-black'
+                  : isDark ? 'bg-[#111520] text-[#9ca3af] hover:text-[#e5e7eb]' : 'bg-[#f0f1f4] text-[#4b5068] hover:text-[#1a1d2b]'
+              }`}>
+              <TrendingUp size={14} /> Furnace Trend
+            </button>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           {(['bake', 'graphite'] as const).map(d => (
-            <button key={d} onClick={() => { setDepartment(d); setSelectedRuns([]); setComparing(false); setFurnaceFilter(''); }}
+            <button key={d} onClick={() => { setDepartment(d); setSelectedRuns([]); setComparing(false); setFurnaceFilter(''); setTrendFurnace(''); }}
               className={`px-5 py-3 text-sm font-semibold rounded-lg transition-colors ${
                 department === d
                   ? 'bg-accent text-black'
@@ -78,20 +131,45 @@ export default function RunComparison() {
               {d.charAt(0).toUpperCase() + d.slice(1)}
             </button>
           ))}
-          <select value={furnaceFilter} onChange={e => setFurnaceFilter(e.target.value)}
-            className="border-2 rounded-lg px-4 py-3 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-            style={{
-              background: isDark ? '#111520' : '#ffffff',
-              borderColor: isDark ? '#252a3a' : '#e2e5eb',
-              color: textPrimary,
-            }}>
-            <option value="">All furnaces</option>
-            {furnaces.map((f: string) => <option key={f} value={f}>{f}</option>)}
-          </select>
+          {mode === 'compare' && (
+            <select value={furnaceFilter} onChange={e => setFurnaceFilter(e.target.value)}
+              className="border-2 rounded-lg px-4 py-3 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+              style={{
+                background: isDark ? '#111520' : '#ffffff',
+                borderColor: isDark ? '#252a3a' : '#e2e5eb',
+                color: textPrimary,
+              }}>
+              <option value="">All furnaces</option>
+              {furnaces.map((f: string) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          )}
+          {mode === 'trend' && (
+            <select value={trendFurnace} onChange={e => setTrendFurnace(e.target.value)}
+              className="border-2 rounded-lg px-4 py-3 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+              style={{
+                background: isDark ? '#111520' : '#ffffff',
+                borderColor: isDark ? '#252a3a' : '#e2e5eb',
+                color: textPrimary,
+              }}>
+              <option value="">Select furnace</option>
+              {furnaces.map((f: string) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          )}
         </div>
       </div>
 
-      {!comparing ? (
+      {mode === 'trend' ? (
+        <FurnaceTrend
+          runs={trendRuns}
+          loading={trendLoading}
+          furnace={trendFurnace}
+          department={department}
+          selectedRuns={selectedRuns}
+          onDotClick={handleDotClick}
+          onToggleRun={toggleRun}
+          onCompare={() => { if (selectedRuns.length === 2) { setMode('compare'); setComparing(true); } }}
+        />
+      ) : !comparing ? (
         <>
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}>
@@ -104,70 +182,7 @@ export default function RunComparison() {
               </button>
             </div>
             {runsLoading ? <div className="p-6"><SkeletonTable rows={8} /></div> : (
-              <div className="max-h-[520px] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{
-                    background: isDark ? '#0f1320' : '#f8f9fb',
-                    borderBottom: `2px solid ${isDark ? '#252a3a' : '#e2e5eb'}`,
-                  }}>
-                    <tr className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMuted }}>
-                      <th className="px-5 py-4 text-left w-8"></th>
-                      <th className="px-5 py-4 text-left">Run</th>
-                      <th className="px-5 py-4 text-left">Furnace</th>
-                      <th className="px-5 py-4 text-left">Date</th>
-                      <th className="px-5 py-4 text-right">Pieces</th>
-                      <th className="px-5 py-4 text-right">Defects</th>
-                      <th className="px-5 py-4 text-right">Rate</th>
-                      {department === 'bake' && <th className="px-5 py-4 text-right">Car Deck</th>}
-                      {department === 'graphite' && <th className="px-5 py-4 text-center">Risk</th>}
-                      <th className="px-5 py-4 text-right">kWh</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {runs.map((r: Run, idx: number) => {
-                      const isSelected = selectedRuns.includes(r.run_number);
-                      const rowColor = r.defect_rate > 0.1 ? 'bg-danger-dim/30' :
-                        r.defect_rate > 0.06 ? 'bg-warning-dim/30' : '';
-                      return (
-                        <tr key={r.run_number} onClick={() => toggleRun(r.run_number)}
-                          className={`cursor-pointer transition-colors hover:bg-white/[0.04] ${rowColor} ${
-                            isSelected ? 'ring-1 ring-inset ring-accent/50 bg-accent-glow' : ''
-                          } ${idx % 2 === 1 && !isSelected && !rowColor ? 'bg-white/[0.02]' : ''}`}
-                          style={{ borderBottom: `1px solid ${isDark ? '#252a3a50' : '#e2e5eb'}` }}>
-                          <td className="px-5 py-4">
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                              isSelected ? 'border-accent bg-accent' : isDark ? 'border-[#252a3a]' : 'border-[#d0d3db]'
-                            }`}>
-                              {isSelected && <span className="text-black text-xs font-bold">
-                                {selectedRuns.indexOf(r.run_number) + 1}
-                              </span>}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 font-mono" style={{ color: textPrimary }}>{r.run_number}</td>
-                          <td className="px-5 py-4" style={{ color: textSecondary }}>{r.furnace}</td>
-                          <td className="px-5 py-4" style={{ color: textSecondary }}>
-                            {r.start_time ? new Date(r.start_time).toLocaleDateString() : '-'}
-                          </td>
-                          <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{r.total_pieces}</td>
-                          <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{r.defect_count}</td>
-                          <td className="px-5 py-4 text-right"><DefectRateBadge rate={r.defect_rate} /></td>
-                          {department === 'bake' && (
-                            <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{r.car_deck}</td>
-                          )}
-                          {department === 'graphite' && (
-                            <td className="px-5 py-4 text-center">
-                              {r.risk_score && <StatusBadge status={r.risk_score} />}
-                            </td>
-                          )}
-                          <td className="px-5 py-4 text-right font-mono" style={{ color: textSecondary }}>
-                            {r.actual_kwh?.toLocaleString()}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <RunTable runs={runs} department={department} selectedRuns={selectedRuns} onToggleRun={toggleRun} />
             )}
           </div>
         </>
@@ -178,6 +193,222 @@ export default function RunComparison() {
       ) : (
         <div className="text-center py-8" style={{ color: textMuted }}>Failed to load comparison</div>
       )}
+    </div>
+  );
+}
+
+function FurnaceTrend({ runs, loading, furnace, department, selectedRuns, onDotClick, onToggleRun, onCompare }: {
+  runs: Run[]; loading: boolean; furnace: string; department: string;
+  selectedRuns: string[]; onDotClick: (rn: string) => void; onToggleRun: (rn: string) => void;
+  onCompare: () => void;
+}) {
+  const { isDark } = useTheme();
+  const card = useCardClass();
+  const gridStroke = isDark ? '#252a3a' : '#e2e5eb';
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
+
+  const chartData = useMemo(() => {
+    return [...runs]
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+      .map(r => ({
+        run_number: r.run_number,
+        date: new Date(r.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        defect_rate: r.defect_rate * 100,
+        raw_rate: r.defect_rate,
+        pieces: r.total_pieces,
+        defects: r.defect_count,
+        profile: r.profile,
+        car_deck: r.car_deck,
+        furnace: r.furnace,
+        fill: r.defect_rate < 0.03 ? '#10b981' : r.defect_rate < 0.07 ? '#f59e0b' : '#FF3621',
+      }));
+  }, [runs]);
+
+  if (!furnace) {
+    return (
+      <div className={`${card} p-12 text-center`}>
+        <TrendingUp size={32} className="mx-auto mb-3 opacity-30" style={{ color: textMuted }} />
+        <div className="text-sm" style={{ color: textMuted }}>Select a furnace to view its run history trend</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Trend chart */}
+      <div className={`${card} p-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold" style={{ color: textSecondary }}>
+            {furnace} — Defect Rate Trend (Last {runs.length} Runs)
+          </h3>
+          {selectedRuns.length === 2 && (
+            <button onClick={onCompare}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-accent text-black hover:bg-accent/90 transition-colors">
+              <GitCompareArrows size={14} /> Compare Selected
+            </button>
+          )}
+          {selectedRuns.length > 0 && selectedRuns.length < 2 && (
+            <span className="text-sm" style={{ color: textMuted }}>Click another dot to compare ({selectedRuns.length}/2)</span>
+          )}
+        </div>
+        {loading ? (
+          <SkeletonChart height="h-[350px]" />
+        ) : chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={350}>
+            <ScatterChart margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+              <YAxis
+                tick={{ fontSize: 12 }}
+                tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                label={{ value: 'Defect Rate (%)', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: textSecondary } }}
+              />
+              <ZAxis range={[120, 120]} />
+              <Tooltip content={<TrendTooltip selectedRuns={selectedRuns} />} />
+              <Scatter
+                data={chartData}
+                onClick={(data: any) => {
+                  if (data?.run_number) onDotClick(data.run_number);
+                }}
+                cursor="pointer"
+              >
+                {chartData.map((entry, idx) => {
+                  const isSelected = selectedRuns.includes(entry.run_number);
+                  return (
+                    <circle
+                      key={idx}
+                      r={isSelected ? 8 : 6}
+                      fill={isSelected ? '#f59e0b' : entry.fill}
+                      stroke={isSelected ? '#ffffff' : 'none'}
+                      strokeWidth={isSelected ? 2 : 0}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  );
+                })}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[350px] flex items-center justify-center text-sm" style={{ color: textMuted }}>No runs found for {furnace}</div>
+        )}
+        <div className="flex items-center gap-4 mt-3 text-xs" style={{ color: textMuted }}>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#10b981]" /> &lt;3%</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#f59e0b]" /> 3-7%</span>
+          <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#FF3621]" /> &gt;7%</span>
+          <span className="ml-2">Click dots to select runs for comparison</span>
+        </div>
+      </div>
+
+      {/* Mini run table */}
+      <div className={`${card} overflow-hidden`}>
+        <div className="px-6 py-3" style={{ borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}>
+          <div className="text-sm font-semibold" style={{ color: textSecondary }}>Run List — {furnace}</div>
+        </div>
+        <RunTable runs={runs} department={department} selectedRuns={selectedRuns} onToggleRun={onToggleRun} maxHeight="max-h-[320px]" />
+      </div>
+    </div>
+  );
+}
+
+function TrendTooltip({ active, payload, selectedRuns }: any) {
+  const { isDark } = useTheme();
+  if (!active || !payload?.[0]) return null;
+  const d = payload[0].payload;
+  const isSelected = selectedRuns?.includes(d.run_number);
+
+  return (
+    <div className="rounded-lg px-4 py-3 text-sm shadow-xl border"
+      style={{
+        background: isDark ? '#141824' : '#ffffff',
+        borderColor: isDark ? '#252a3a' : '#e2e5eb',
+      }}>
+      <div className="font-mono font-semibold mb-1" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>
+        {d.run_number} {isSelected && '✓'}
+      </div>
+      <div className="space-y-0.5 text-xs" style={{ color: isDark ? '#9ca3af' : '#4b5068' }}>
+        <div>Date: {d.date}</div>
+        <div>Pieces: {d.pieces} · Defects: {d.defects}</div>
+        <div>Defect Rate: <span className="font-semibold" style={{ color: d.fill }}>{d.defect_rate.toFixed(1)}%</span></div>
+        {d.profile && <div>Profile: {d.profile}</div>}
+        {d.car_deck && <div>Car Deck: {d.car_deck}</div>}
+      </div>
+    </div>
+  );
+}
+
+function RunTable({ runs, department, selectedRuns, onToggleRun, maxHeight = 'max-h-[520px]' }: {
+  runs: Run[]; department: string; selectedRuns: string[]; onToggleRun: (rn: string) => void; maxHeight?: string;
+}) {
+  const { isDark } = useTheme();
+  const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+  const textSecondary = isDark ? '#9ca3af' : '#4b5068';
+  const textMuted = isDark ? '#6b7280' : '#8b8fa3';
+
+  return (
+    <div className={`${maxHeight} overflow-y-auto`}>
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{
+          background: isDark ? '#0f1320' : '#f8f9fb',
+          borderBottom: `2px solid ${isDark ? '#252a3a' : '#e2e5eb'}`,
+        }}>
+          <tr className="text-xs font-semibold uppercase tracking-wider" style={{ color: textMuted }}>
+            <th className="px-5 py-4 text-left w-8"></th>
+            <th className="px-5 py-4 text-left">Run</th>
+            <th className="px-5 py-4 text-left">Furnace</th>
+            <th className="px-5 py-4 text-left">Date</th>
+            <th className="px-5 py-4 text-right">Pieces</th>
+            <th className="px-5 py-4 text-right">Defects</th>
+            <th className="px-5 py-4 text-right">Rate</th>
+            {department === 'bake' && <th className="px-5 py-4 text-right">Car Deck</th>}
+            {department === 'graphite' && <th className="px-5 py-4 text-center">Risk</th>}
+            <th className="px-5 py-4 text-right">kWh</th>
+          </tr>
+        </thead>
+        <tbody>
+          {runs.map((r: Run, idx: number) => {
+            const isSelected = selectedRuns.includes(r.run_number);
+            const rowColor = r.defect_rate > 0.1 ? 'bg-danger-dim/30' :
+              r.defect_rate > 0.06 ? 'bg-warning-dim/30' : '';
+            return (
+              <tr key={r.run_number} onClick={() => onToggleRun(r.run_number)}
+                className={`cursor-pointer transition-colors hover:bg-white/[0.04] ${rowColor} ${
+                  isSelected ? 'ring-1 ring-inset ring-accent/50 bg-accent-glow' : ''
+                } ${idx % 2 === 1 && !isSelected && !rowColor ? 'bg-white/[0.02]' : ''}`}
+                style={{ borderBottom: `1px solid ${isDark ? '#252a3a50' : '#e2e5eb'}` }}>
+                <td className="px-5 py-4">
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    isSelected ? 'border-accent bg-accent' : isDark ? 'border-[#252a3a]' : 'border-[#d0d3db]'
+                  }`}>
+                    {isSelected && <span className="text-black text-xs font-bold">
+                      {selectedRuns.indexOf(r.run_number) + 1}
+                    </span>}
+                  </div>
+                </td>
+                <td className="px-5 py-4 font-mono" style={{ color: textPrimary }}>{r.run_number}</td>
+                <td className="px-5 py-4" style={{ color: textSecondary }}>{r.furnace}</td>
+                <td className="px-5 py-4" style={{ color: textSecondary }}>
+                  {r.start_time ? new Date(r.start_time).toLocaleDateString() : '-'}
+                </td>
+                <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{r.total_pieces}</td>
+                <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{r.defect_count}</td>
+                <td className="px-5 py-4 text-right"><DefectRateBadge rate={r.defect_rate} /></td>
+                {department === 'bake' && (
+                  <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{r.car_deck}</td>
+                )}
+                {department === 'graphite' && (
+                  <td className="px-5 py-4 text-center">
+                    {r.risk_score && <StatusBadge status={r.risk_score} />}
+                  </td>
+                )}
+                <td className="px-5 py-4 text-right font-mono" style={{ color: textSecondary }}>
+                  {r.actual_kwh?.toLocaleString()}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

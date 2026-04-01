@@ -36,6 +36,11 @@ def bake_anomalies(limit: int = Query(50, le=200)):
         """, (limit,))
         runs = [dict(r) for r in cur.fetchall()]
 
+        # Read configurable z-threshold from app_settings
+        cur.execute("SELECT value FROM app_settings WHERE key = 'spc_z_threshold'")
+        z_row = cur.fetchone()
+        z_threshold = float(z_row['value']) if z_row else 1.5
+
         # Score each run
         anomalies = []
         for run in runs:
@@ -43,7 +48,7 @@ def bake_anomalies(limit: int = Query(50, le=200)):
             # Car deck z-score
             if stats["std_deck"] and stats["std_deck"] > 0:
                 z_deck = (run["car_deck"] - stats["mean_deck"]) / stats["std_deck"]
-                if abs(z_deck) > 1.5:
+                if abs(z_deck) > z_threshold:
                     deviations.append({
                         "parameter": "car_deck",
                         "value": run["car_deck"],
@@ -55,7 +60,7 @@ def bake_anomalies(limit: int = Query(50, le=200)):
             # Duration z-score
             if stats["std_duration"] and stats["std_duration"] > 0:
                 z_dur = (run["duration_hours"] - stats["mean_duration"]) / stats["std_duration"]
-                if abs(z_dur) > 1.5:
+                if abs(z_dur) > z_threshold:
                     deviations.append({
                         "parameter": "duration_hours",
                         "value": round(run["duration_hours"], 1),
@@ -67,7 +72,7 @@ def bake_anomalies(limit: int = Query(50, le=200)):
             # kWh z-score
             if stats["std_kwh"] and stats["std_kwh"] > 0:
                 z_kwh = (run["actual_kwh"] - stats["mean_kwh"]) / stats["std_kwh"]
-                if abs(z_kwh) > 1.5:
+                if abs(z_kwh) > z_threshold:
                     deviations.append({
                         "parameter": "actual_kwh",
                         "value": round(run["actual_kwh"], 0),
@@ -79,7 +84,7 @@ def bake_anomalies(limit: int = Query(50, le=200)):
             # Downtime z-score
             if stats["std_downtime"] and stats["std_downtime"] > 0:
                 z_dt = (run["total_downtime"] - stats["mean_downtime"]) / stats["std_downtime"]
-                if abs(z_dt) > 1.5:
+                if abs(z_dt) > z_threshold:
                     deviations.append({
                         "parameter": "total_downtime",
                         "value": round(run["total_downtime"], 1),

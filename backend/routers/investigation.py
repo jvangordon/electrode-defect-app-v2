@@ -347,6 +347,109 @@ def _build_lifecycle(electrode, bake_run, graphite_run):
     return steps
 
 
+@router.get("/knowledge/search")
+def knowledge_search(q: str = Query(..., min_length=1), limit: int = Query(20, le=100)):
+    """Full-text search across investigations, notes, and corrective actions."""
+    terms = q.strip().split()
+    tsquery = " & ".join(terms)
+
+    try:
+        with get_cursor() as cur:
+            # Search investigations
+            cur.execute("""
+                SELECT i.investigation_id, i.gpn, i.defect_code, i.defect_site,
+                       i.root_cause_category, i.root_cause_detail, i.status,
+                       ts_headline('english', coalesce(i.root_cause_detail,'') || ' ' || coalesce(i.corrective_action,'') || ' ' || coalesce(i.effectiveness_notes,''),
+                         to_tsquery('english', %s),
+                         'StartSel=<mark>, StopSel=</mark>, MaxWords=50, MinWords=20') as snippet,
+                       ts_rank(i.search_vector, to_tsquery('english', %s)) as rank,
+                       'investigation' as source
+                FROM investigations i
+                WHERE i.search_vector @@ to_tsquery('english', %s)
+                ORDER BY rank DESC
+                LIMIT %s
+            """, (tsquery, tsquery, tsquery, limit))
+            inv_results = [dict(r) for r in cur.fetchall()]
+
+            # Search notes
+            cur.execute("""
+                SELECT n.note_id, n.investigation_id, n.author, n.note_text,
+                       ts_headline('english', n.note_text, to_tsquery('english', %s),
+                         'StartSel=<mark>, StopSel=</mark>, MaxWords=50, MinWords=20') as snippet,
+                       ts_rank(n.search_vector, to_tsquery('english', %s)) as rank,
+                       'note' as source
+                FROM investigation_notes n
+                WHERE n.search_vector @@ to_tsquery('english', %s)
+                ORDER BY rank DESC
+                LIMIT %s
+            """, (tsquery, tsquery, tsquery, limit))
+            note_results = [dict(r) for r in cur.fetchall()]
+
+            # Search corrective actions
+            cur.execute("""
+                SELECT a.action_id, a.investigation_id, a.title, a.description,
+                       a.action_type, a.status, a.verified_at,
+                       ts_headline('english', coalesce(a.title,'') || ' ' || coalesce(a.description,'') || ' ' || coalesce(a.verification_notes,''),
+                         to_tsquery('english', %s),
+                         'StartSel=<mark>, StopSel=</mark>, MaxWords=50, MinWords=20') as snippet,
+                       ts_rank(a.search_vector, to_tsquery('english', %s)) as rank,
+                       'action' as source
+                FROM corrective_actions a
+                WHERE a.search_vector @@ to_tsquery('english', %s)
+                ORDER BY rank DESC
+                LIMIT %s
+            """, (tsquery, tsquery, tsquery, limit))
+            action_results = [dict(r) for r in cur.fetchall()]
+
+        return {
+            "query": q,
+            "total_results": len(inv_results) + len(note_results) + len(action_results),
+            "investigations": inv_results,
+            "notes": note_results,
+            "actions": action_results,
+        }
+    except Exception:
+        # Fallback to ILIKE search if tsquery fails
+        search_term = f"%{q}%"
+        with get_cursor() as cur:
+            cur.execute("""
+                SELECT investigation_id, gpn, defect_code, defect_site,
+                       root_cause_category, root_cause_detail, status,
+                       root_cause_detail as snippet, 0.0 as rank, 'investigation' as source
+                FROM investigations
+                WHERE root_cause_detail ILIKE %s OR corrective_action ILIKE %s OR effectiveness_notes ILIKE %s
+                LIMIT %s
+            """, (search_term, search_term, search_term, limit))
+            inv_results = [dict(r) for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT note_id, investigation_id, author, note_text,
+                       note_text as snippet, 0.0 as rank, 'note' as source
+                FROM investigation_notes
+                WHERE note_text ILIKE %s
+                LIMIT %s
+            """, (search_term, limit))
+            note_results = [dict(r) for r in cur.fetchall()]
+
+            cur.execute("""
+                SELECT action_id, investigation_id, title, description,
+                       action_type, status, verified_at,
+                       title as snippet, 0.0 as rank, 'action' as source
+                FROM corrective_actions
+                WHERE title ILIKE %s OR description ILIKE %s OR verification_notes ILIKE %s
+                LIMIT %s
+            """, (search_term, search_term, search_term, limit))
+            action_results = [dict(r) for r in cur.fetchall()]
+
+        return {
+            "query": q,
+            "total_results": len(inv_results) + len(note_results) + len(action_results),
+            "investigations": inv_results,
+            "notes": note_results,
+            "actions": action_results,
+        }
+
+
 @router.get("/investigations/{investigation_id}/ai-analysis")
 def ai_root_cause_analysis(investigation_id: int):
     """Mock GenAI root-cause analysis grounded in real electrode data."""
@@ -606,4 +709,65 @@ def similar_investigations(investigation_id: int):
                 "effective_action": effective_action,
             })
 
-    return {"similar_cases": similar_cases}
+        # Build recommendations from corrective actions of similar cases
+        similar_inv_ids = [sc["investigation"]["investigation_id"] for sc in similar_cases]
+        recommendations = []
+        if similar_inv_ids:
+            cur.execute("""
+                SELECT a.action_type, a.title, a.status, a.verified_at,
+                       a.defect_rate_before, a.defect_rate_after
+                FROM corrective_actions a
+                WHERE a.investigation_id IN %s
+            """, (tuple(similar_inv_ids),))
+            all_actions = [dict(r) for r in cur.fetchall()]
+
+            action_groups: dict = {}
+            for action in all_actions:
+                key = action["action_type"] or "other"
+                if key not in action_groups:
+                    action_groups[key] = {
+                        "action_type": key,
+                        "total_count": 0,
+                        "verified_effective": 0,
+                        "verified_ineffective": 0,
+                        "avg_rate_before": [],
+                        "avg_rate_after": [],
+                        "example_titles": [],
+                    }
+                group = action_groups[key]
+                group["total_count"] += 1
+                if action["title"] and action["title"] not in group["example_titles"]:
+                    group["example_titles"].append(action["title"])
+
+                if action["verified_at"]:
+                    if action["defect_rate_after"] is not None and action["defect_rate_before"] is not None:
+                        if action["defect_rate_after"] < action["defect_rate_before"]:
+                            group["verified_effective"] += 1
+                        else:
+                            group["verified_ineffective"] += 1
+                        group["avg_rate_before"].append(action["defect_rate_before"])
+                        group["avg_rate_after"].append(action["defect_rate_after"])
+
+            for key, group in action_groups.items():
+                success_rate = group["verified_effective"] / max(group["total_count"], 1)
+                avg_improvement = None
+                if group["avg_rate_before"] and group["avg_rate_after"]:
+                    avg_before = sum(group["avg_rate_before"]) / len(group["avg_rate_before"])
+                    avg_after = sum(group["avg_rate_after"]) / len(group["avg_rate_after"])
+                    avg_improvement = round((1 - avg_after / avg_before) * 100, 1) if avg_before > 0 else None
+
+                recommendations.append({
+                    "action_type": key,
+                    "total_count": group["total_count"],
+                    "verified_effective": group["verified_effective"],
+                    "verified_ineffective": group["verified_ineffective"],
+                    "success_rate": round(success_rate, 2),
+                    "avg_improvement_pct": avg_improvement,
+                    "example_titles": group["example_titles"][:3],
+                    "is_recommended": success_rate >= 0.6 and group["verified_effective"] >= 2,
+                    "is_ineffective": group["verified_ineffective"] > group["verified_effective"],
+                })
+
+            recommendations.sort(key=lambda r: (-r["is_recommended"], -r["success_rate"]))
+
+    return {"similar_cases": similar_cases, "recommendations": recommendations}

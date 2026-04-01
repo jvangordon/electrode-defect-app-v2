@@ -471,8 +471,21 @@ export interface SimilarCase {
   effective_action: string | null;
 }
 
+export interface Recommendation {
+  action_type: string;
+  total_count: number;
+  verified_effective: number;
+  verified_ineffective: number;
+  success_rate: number;
+  avg_improvement_pct: number | null;
+  example_titles: string[];
+  is_recommended: boolean;
+  is_ineffective: boolean;
+}
+
 export interface SimilarCasesResponse {
   similar_cases: SimilarCase[];
+  recommendations: Recommendation[];
 }
 
 // ============================================================
@@ -481,4 +494,70 @@ export interface SimilarCasesResponse {
 
 export interface ElectrodeSearchResponse {
   results: ElectrodeSearchResult[];
+}
+
+// ============================================================
+// Settings
+// ============================================================
+
+export interface SettingValue {
+  value: string;
+  description: string;
+  updated_at: string | null;
+}
+
+export interface CompositionRiskRow {
+  quintile: string;
+  avg_defect_rate: number;
+  probability_high_defect_event: number;
+  run_count: number;
+}
+
+export interface RiskFactorRow {
+  id: number;
+  factor_name: string;
+  factor_level: string;
+  risk_group: string;
+  defect_rate: number;
+  n_electrodes: number;
+  p_value: number;
+}
+
+export interface SettingsResponse {
+  settings: Record<string, SettingValue>;
+  composition_risk: CompositionRiskRow[];
+  risk_factors: RiskFactorRow[];
+}
+
+// ============================================================
+// Knowledge Search
+// ============================================================
+
+export interface KnowledgeSearchResult {
+  investigation_id?: number;
+  note_id?: number;
+  action_id?: number;
+  gpn?: string;
+  defect_code?: string;
+  defect_site?: string;
+  root_cause_category?: string;
+  root_cause_detail?: string;
+  status?: string;
+  author?: string;
+  note_text?: string;
+  title?: string;
+  description?: string;
+  action_type?: string;
+  verified_at?: string | null;
+  snippet: string;
+  rank: number;
+  source: 'investigation' | 'note' | 'action';
+}
+
+export interface KnowledgeSearchResponse {
+  query: string;
+  total_results: number;
+  investigations: KnowledgeSearchResult[];
+  notes: KnowledgeSearchResult[];
+  actions: KnowledgeSearchResult[];
 }

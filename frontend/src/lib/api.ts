@@ -15,6 +15,8 @@ import type {
   ElectrodeSearchResponse,
   AiAnalysisResponse,
   SimilarCasesResponse,
+  SettingsResponse,
+  KnowledgeSearchResponse,
 } from '../types';
 
 const BASE = '/api';
@@ -81,4 +83,14 @@ export const api = {
   // AI Analysis (Mock GenAI)
   getAiAnalysis: (investigationId: number) => request<AiAnalysisResponse>(`/investigations/${investigationId}/ai-analysis`),
   getSimilarCases: (investigationId: number) => request<SimilarCasesResponse>(`/investigations/${investigationId}/similar`),
+
+  // Settings
+  getSettings: () => request<SettingsResponse>('/settings'),
+  updateSettings: (data: Record<string, unknown>) =>
+    request<{ ok: boolean }>('/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  resetSettings: () =>
+    request<{ ok: boolean }>('/settings/reset', { method: 'POST' }),
+
+  // Knowledge Search
+  searchKnowledge: (q: string) => request<KnowledgeSearchResponse>(`/knowledge/search?q=${encodeURIComponent(q)}`),
 };
