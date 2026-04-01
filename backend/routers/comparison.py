@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 from backend.db import get_cursor
 
@@ -60,7 +60,7 @@ def compare_runs(run_a: str, run_b: str):
         runs_data = {r["run_number"]: dict(r) for r in cur.fetchall()}
 
         if run_a not in runs_data or run_b not in runs_data:
-            return {"error": "One or both runs not found"}
+            raise HTTPException(status_code=404, detail="One or both runs not found")
 
         # Fetch electrodes for both runs
         cur.execute(
@@ -145,7 +145,7 @@ def get_run_detail(run_number: str):
         cur.execute("SELECT * FROM runs WHERE run_number = %s", (run_number,))
         run = cur.fetchone()
         if not run:
-            return {"error": "Run not found"}
+            raise HTTPException(status_code=404, detail="Run not found")
 
         cur.execute(
             """SELECT e.*, l.lot_defect_rate, l.risk_tier

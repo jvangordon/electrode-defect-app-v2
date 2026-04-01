@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
-from collections import defaultdict
+import logging
+import psycopg2
 from backend.db import get_cursor
+
+logger = logging.getLogger("edrs")
 
 router = APIRouter(tags=["investigation"])
 
@@ -96,7 +99,7 @@ def get_investigation(investigation_id: int):
         cur.execute("SELECT * FROM investigations WHERE investigation_id = %s", (investigation_id,))
         inv = cur.fetchone()
         if not inv:
-            return {"error": "Investigation not found"}
+            raise HTTPException(status_code=404, detail="Investigation not found")
 
         cur.execute("""
             SELECT * FROM investigation_notes
@@ -131,16 +134,21 @@ def create_investigation(body: InvestigationCreate):
     return {"investigation_id": inv_id}
 
 
+INVESTIGATION_UPDATE_FIELDS = {"status", "root_cause_category", "root_cause_detail", "corrective_action", "assigned_to", "due_date", "effectiveness_notes"}
+
+
 @router.patch("/investigations/{investigation_id}")
 def update_investigation(investigation_id: int, body: InvestigationUpdate):
     updates = []
     params = []
     for field, value in body.model_dump(exclude_unset=True).items():
-        updates.append(f"{field} = %s")
+        if field not in INVESTIGATION_UPDATE_FIELDS:
+            continue
+        updates.append(f'"{field}" = %s')
         params.append(value)
 
     if not updates:
-        return {"error": "No fields to update"}
+        raise HTTPException(status_code=400, detail="No fields to update")
 
     # Auto-set closed_at when status changes to closed/verified
     if body.status in ("closed", "verified"):
@@ -182,12 +190,17 @@ def add_action(investigation_id: int, body: ActionCreate):
     return {"action_id": action_id}
 
 
+ACTION_UPDATE_FIELDS = {"status", "assigned_to", "priority", "actual_savings", "verification_notes"}
+
+
 @router.patch("/actions/{action_id}")
 def update_action(action_id: int, body: ActionUpdate):
     updates = []
     params = []
     for field, value in body.model_dump(exclude_unset=True).items():
-        updates.append(f"{field} = %s")
+        if field not in ACTION_UPDATE_FIELDS:
+            continue
+        updates.append(f'"{field}" = %s')
         params.append(value)
 
     if body.status == "completed":
@@ -196,7 +209,7 @@ def update_action(action_id: int, body: ActionUpdate):
         updates.append("verified_at = NOW()")
 
     if not updates:
-        return {"error": "No fields to update"}
+        raise HTTPException(status_code=400, detail="No fields to update")
 
     params.append(action_id)
     with get_cursor(commit=True) as cur:
@@ -243,7 +256,7 @@ def get_electrode_detail(gpn: str):
         """, (gpn,))
         electrode = cur.fetchone()
         if not electrode:
-            return {"error": "Electrode not found"}
+            raise HTTPException(status_code=404, detail="Electrode not found")
         electrode = dict(electrode)
 
         # Get bake run details
@@ -350,39 +363,36 @@ def _build_lifecycle(electrode, bake_run, graphite_run):
 @router.get("/knowledge/search")
 def knowledge_search(q: str = Query(..., min_length=1), limit: int = Query(20, le=100)):
     """Full-text search across investigations, notes, and corrective actions."""
-    terms = q.strip().split()
-    tsquery = " & ".join(terms)
-
     try:
         with get_cursor() as cur:
-            # Search investigations
+            # Search investigations using plainto_tsquery for safe handling of arbitrary user input
             cur.execute("""
                 SELECT i.investigation_id, i.gpn, i.defect_code, i.defect_site,
                        i.root_cause_category, i.root_cause_detail, i.status,
                        ts_headline('english', coalesce(i.root_cause_detail,'') || ' ' || coalesce(i.corrective_action,'') || ' ' || coalesce(i.effectiveness_notes,''),
-                         to_tsquery('english', %s),
+                         plainto_tsquery('english', %s),
                          'StartSel=<mark>, StopSel=</mark>, MaxWords=50, MinWords=20') as snippet,
-                       ts_rank(i.search_vector, to_tsquery('english', %s)) as rank,
+                       ts_rank(i.search_vector, plainto_tsquery('english', %s)) as rank,
                        'investigation' as source
                 FROM investigations i
-                WHERE i.search_vector @@ to_tsquery('english', %s)
+                WHERE i.search_vector @@ plainto_tsquery('english', %s)
                 ORDER BY rank DESC
                 LIMIT %s
-            """, (tsquery, tsquery, tsquery, limit))
+            """, (q, q, q, limit))
             inv_results = [dict(r) for r in cur.fetchall()]
 
             # Search notes
             cur.execute("""
                 SELECT n.note_id, n.investigation_id, n.author, n.note_text,
-                       ts_headline('english', n.note_text, to_tsquery('english', %s),
+                       ts_headline('english', n.note_text, plainto_tsquery('english', %s),
                          'StartSel=<mark>, StopSel=</mark>, MaxWords=50, MinWords=20') as snippet,
-                       ts_rank(n.search_vector, to_tsquery('english', %s)) as rank,
+                       ts_rank(n.search_vector, plainto_tsquery('english', %s)) as rank,
                        'note' as source
                 FROM investigation_notes n
-                WHERE n.search_vector @@ to_tsquery('english', %s)
+                WHERE n.search_vector @@ plainto_tsquery('english', %s)
                 ORDER BY rank DESC
                 LIMIT %s
-            """, (tsquery, tsquery, tsquery, limit))
+            """, (q, q, q, limit))
             note_results = [dict(r) for r in cur.fetchall()]
 
             # Search corrective actions
@@ -390,15 +400,15 @@ def knowledge_search(q: str = Query(..., min_length=1), limit: int = Query(20, l
                 SELECT a.action_id, a.investigation_id, a.title, a.description,
                        a.action_type, a.status, a.verified_at,
                        ts_headline('english', coalesce(a.title,'') || ' ' || coalesce(a.description,'') || ' ' || coalesce(a.verification_notes,''),
-                         to_tsquery('english', %s),
+                         plainto_tsquery('english', %s),
                          'StartSel=<mark>, StopSel=</mark>, MaxWords=50, MinWords=20') as snippet,
-                       ts_rank(a.search_vector, to_tsquery('english', %s)) as rank,
+                       ts_rank(a.search_vector, plainto_tsquery('english', %s)) as rank,
                        'action' as source
                 FROM corrective_actions a
-                WHERE a.search_vector @@ to_tsquery('english', %s)
+                WHERE a.search_vector @@ plainto_tsquery('english', %s)
                 ORDER BY rank DESC
                 LIMIT %s
-            """, (tsquery, tsquery, tsquery, limit))
+            """, (q, q, q, limit))
             action_results = [dict(r) for r in cur.fetchall()]
 
         return {
@@ -408,8 +418,8 @@ def knowledge_search(q: str = Query(..., min_length=1), limit: int = Query(20, l
             "notes": note_results,
             "actions": action_results,
         }
-    except Exception:
-        # Fallback to ILIKE search if tsquery fails
+    except psycopg2.Error as e:
+        logger.warning("Full-text search failed, falling back to ILIKE: %s", e)
         search_term = f"%{q}%"
         with get_cursor() as cur:
             cur.execute("""
@@ -457,7 +467,7 @@ def ai_root_cause_analysis(investigation_id: int):
         cur.execute("SELECT * FROM investigations WHERE investigation_id = %s", (investigation_id,))
         inv = cur.fetchone()
         if not inv:
-            return {"error": "Investigation not found"}
+            raise HTTPException(status_code=404, detail="Investigation not found")
         inv = dict(inv)
 
         # Fetch the electrode and its lifecycle data
@@ -469,7 +479,7 @@ def ai_root_cause_analysis(investigation_id: int):
         """, (inv["gpn"],))
         electrode = cur.fetchone()
         if not electrode:
-            return {"error": "Electrode not found"}
+            raise HTTPException(status_code=404, detail="Electrode not found")
         electrode = dict(electrode)
 
         # Get run details
@@ -641,7 +651,7 @@ def similar_investigations(investigation_id: int):
         cur.execute("SELECT * FROM investigations WHERE investigation_id = %s", (investigation_id,))
         inv = cur.fetchone()
         if not inv:
-            return {"error": "Investigation not found"}
+            raise HTTPException(status_code=404, detail="Investigation not found")
         inv = dict(inv)
 
         defect_code = inv.get("defect_code")

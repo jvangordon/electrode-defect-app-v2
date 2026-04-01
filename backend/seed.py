@@ -15,6 +15,7 @@ import os
 import sys
 import random
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 
@@ -1003,6 +1004,16 @@ def add_defect_rate_columns(cur):
 
 
 def main():
+    env = os.environ.get("ENVIRONMENT", "development")
+    if env == "production":
+        print("ERROR: seed.py cannot run in production. Set ENVIRONMENT=development to override.")
+        sys.exit(1)
+    if env != "development":
+        confirm = input(f"ENVIRONMENT={env}. Are you sure you want to seed? This will DROP ALL TABLES. Type 'yes' to confirm: ")
+        if confirm.strip().lower() != 'yes':
+            print("Aborted.")
+            sys.exit(0)
+
     print("=" * 60)
     print("EDRS v2 — Seeding Database")
     print("=" * 60)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, List
 from backend.db import get_cursor
 
 router = APIRouter(tags=["settings"])
@@ -37,6 +37,26 @@ ORIGINAL_RISK_FACTORS = [
 ]
 
 
+class CompositionRiskUpdate(BaseModel):
+    quintile: int = Field(ge=1, le=5)
+    avg_defect_rate: float = Field(ge=0.0, le=1.0)
+    probability_high_defect_event: float = Field(ge=0.0, le=1.0)
+
+
+class RiskFactorUpdate(BaseModel):
+    id: int
+    risk_group: str = Field(pattern=r'^(low|medium|high)$')
+
+
+class SettingsUpdate(BaseModel):
+    spc_z_threshold: Optional[float] = Field(None, ge=0.5, le=5.0)
+    defect_rate_anomaly_threshold: Optional[float] = Field(None, ge=0.001, le=1.0)
+    car_deck_high_risk_cutoff: Optional[int] = Field(None, ge=1, le=9)
+    lot_high_risk_defect_rate: Optional[float] = Field(None, ge=0.001, le=1.0)
+    composition_risk: Optional[List[CompositionRiskUpdate]] = None
+    risk_factors: Optional[List[RiskFactorUpdate]] = None
+
+
 @router.get("/settings")
 def get_settings():
     with get_cursor() as cur:
@@ -58,27 +78,28 @@ def get_settings():
 
 
 @router.patch("/settings")
-def update_settings(body: dict):
+def update_settings(body: SettingsUpdate):
+    data = body.model_dump(exclude_unset=True)
     with get_cursor(commit=True) as cur:
         # Update app_settings key-value pairs
         for key in DEFAULTS:
-            if key in body:
+            if key in data:
                 cur.execute(
                     "UPDATE app_settings SET value = %s, updated_at = NOW() WHERE key = %s",
-                    (str(body[key]), key),
+                    (str(data[key]), key),
                 )
 
         # Update composition_risk rows
-        if "composition_risk" in body:
-            for row in body["composition_risk"]:
+        if "composition_risk" in data and data["composition_risk"]:
+            for row in data["composition_risk"]:
                 cur.execute(
                     "UPDATE composition_risk SET avg_defect_rate = %s, probability_high_defect_event = %s WHERE quintile = %s",
                     (row["avg_defect_rate"], row["probability_high_defect_event"], row["quintile"]),
                 )
 
         # Update risk_factors
-        if "risk_factors" in body:
-            for row in body["risk_factors"]:
+        if "risk_factors" in data and data["risk_factors"]:
+            for row in data["risk_factors"]:
                 cur.execute(
                     "UPDATE risk_factors SET risk_group = %s WHERE id = %s",
                     (row["risk_group"], row["id"]),

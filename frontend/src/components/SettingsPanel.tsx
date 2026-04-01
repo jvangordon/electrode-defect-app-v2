@@ -48,34 +48,46 @@ export default function SettingsPanel({ open, onClose }: Props) {
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
-    await api.updateSettings({
-      spc_z_threshold: zThreshold,
-      defect_rate_anomaly_threshold: String(parseFloat(defectRateThreshold) / 100),
-      car_deck_high_risk_cutoff: carDeckCutoff,
-      lot_high_risk_defect_rate: String(parseFloat(lotHighRisk) / 100),
-      composition_risk: compRisk.map(r => ({
-        quintile: r.quintile,
-        avg_defect_rate: r.avg_defect_rate,
-        probability_high_defect_event: r.probability_high_defect_event,
-      })),
-      risk_factors: riskFactors.map(r => ({ id: r.id, risk_group: r.risk_group })),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await api.updateSettings({
+        spc_z_threshold: zThreshold,
+        defect_rate_anomaly_threshold: String(parseFloat(defectRateThreshold) / 100),
+        car_deck_high_risk_cutoff: carDeckCutoff,
+        lot_high_risk_defect_rate: String(parseFloat(lotHighRisk) / 100),
+        composition_risk: compRisk.map(r => ({
+          quintile: r.quintile,
+          avg_defect_rate: r.avg_defect_rate,
+          probability_high_defect_event: r.probability_high_defect_event,
+        })),
+        risk_factors: riskFactors.map(r => ({ id: r.id, risk_group: r.risk_group })),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = async () => {
     setSaving(true);
-    await api.resetSettings();
-    const res = await api.getSettings();
-    setZThreshold(res.settings.spc_z_threshold?.value || '1.5');
-    setDefectRateThreshold(String(parseFloat(res.settings.defect_rate_anomaly_threshold?.value || '0.05') * 100));
-    setCarDeckCutoff(res.settings.car_deck_high_risk_cutoff?.value || '7');
-    setLotHighRisk(String(parseFloat(res.settings.lot_high_risk_defect_rate?.value || '0.05') * 100));
-    setCompRisk(res.composition_risk);
-    setRiskFactors(res.risk_factors);
-    setSaving(false);
+    try {
+      await api.resetSettings();
+      const res = await api.getSettings();
+      setZThreshold(res.settings.spc_z_threshold?.value || '1.5');
+      setDefectRateThreshold(String(parseFloat(res.settings.defect_rate_anomaly_threshold?.value || '0.05') * 100));
+      setCarDeckCutoff(res.settings.car_deck_high_risk_cutoff?.value || '7');
+      setLotHighRisk(String(parseFloat(res.settings.lot_high_risk_defect_rate?.value || '0.05') * 100));
+      setCompRisk(res.composition_risk);
+      setRiskFactors(res.risk_factors);
+    } catch (err) {
+      console.error('Failed to reset settings:', err);
+      alert('Failed to reset settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!open) return null;

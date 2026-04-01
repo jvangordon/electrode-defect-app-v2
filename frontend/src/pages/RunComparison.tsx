@@ -36,7 +36,7 @@ export default function RunComparison() {
   const card = useCardClass();
   const location = useLocation();
 
-  // Pre-select run from URL query param (e.g. /comparison?run=XXX)
+  // Pre-select run from URL query param (e.g. /comparison?run=OB-2025-0042)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const runParam = params.get('run');
@@ -77,7 +77,7 @@ export default function RunComparison() {
   }, [runs]);
 
   // Set default trend furnace when furnaces load
-  useMemo(() => {
+  useEffect(() => {
     if (mode === 'trend' && !trendFurnace && furnaces.length > 0) {
       setTrendFurnace(furnaces[0]);
     }

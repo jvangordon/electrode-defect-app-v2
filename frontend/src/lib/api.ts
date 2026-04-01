@@ -43,8 +43,8 @@ export const api = {
     return request<RunsResponse>(`/runs${qs}`);
   },
   compareRuns: (runA: string, runB: string) =>
-    request<ComparisonResult>(`/runs/compare?run_a=${runA}&run_b=${runB}`),
-  getRunDetail: (runNumber: string) => request<RunDetail>(`/runs/${runNumber}`),
+    request<ComparisonResult>(`/runs/compare?run_a=${encodeURIComponent(runA)}&run_b=${encodeURIComponent(runB)}`),
+  getRunDetail: (runNumber: string) => request<RunDetail>(`/runs/${encodeURIComponent(runNumber)}`),
 
   // Anomaly
   getBakeAnomalies: (limit = 50, params?: Record<string, string>) => {
@@ -85,7 +85,7 @@ export const api = {
     request<{ ok: boolean }>(`/actions/${actionId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Electrodes
-  searchElectrodes: (q: string) => request<ElectrodeSearchResponse>(`/electrodes/search?q=${q}`),
+  searchElectrodes: (q: string) => request<ElectrodeSearchResponse>(`/electrodes/search?q=${encodeURIComponent(q)}`),
   getElectrode: (gpn: string) => request<ElectrodeDetailResponse>(`/electrodes/${gpn}`),
 
   // AI Analysis (Mock GenAI)

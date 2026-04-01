@@ -228,22 +228,39 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
 
   const handleAddNote = async () => {
     if (!noteText.trim()) return;
-    await api.addNote(id, { author: 'Current User', note_text: noteText });
-    setNoteText('');
-    refetch();
+    try {
+      const DEMO_USER = 'Demo Operator'; // TODO: Replace with auth system user
+      await api.addNote(id, { author: DEMO_USER, note_text: noteText });
+      setNoteText('');
+      refetch();
+    } catch (err) {
+      console.error('Failed to add note:', err);
+      alert('Failed to add note. Please try again.');
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {
     setUpdating(true);
-    await api.updateInvestigation(id, { status: newStatus });
-    refetch();
-    refetchList();
-    setUpdating(false);
+    try {
+      await api.updateInvestigation(id, { status: newStatus });
+      refetch();
+      refetchList();
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      alert('Failed to update status. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleActionStatus = async (actionId: number, newStatus: string) => {
-    await api.updateAction(actionId, { status: newStatus });
-    refetch();
+    try {
+      await api.updateAction(actionId, { status: newStatus });
+      refetch();
+    } catch (err) {
+      console.error('Failed to update action:', err);
+      alert('Failed to update action status. Please try again.');
+    }
   };
 
   if (loading) return <div className="space-y-5"><SkeletonCard height="h-36" /><SkeletonCard height="h-52" /></div>;

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, GitCompareArrows, AlertTriangle, TrendingUp, Search, BookOpen, ChevronLeft, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
+import { LayoutDashboard, GitCompareArrows, AlertTriangle, TrendingUp, Search, Sparkles, BookOpen, ChevronLeft, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from '../App';
 
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/anomaly', icon: AlertTriangle, label: 'Anomaly Detection' },
   { to: '/equipment', icon: TrendingUp, label: 'Equipment Trending' },
   { to: '/investigations', icon: Search, label: 'Investigations' },
+  { to: '/genie', icon: Sparkles, label: 'Genie Explorer', isAI: true },
   { to: '/guide', icon: BookOpen, label: 'Guide' },
 ];
 

@@ -1,7 +1,11 @@
 import os
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("edrs")
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# SECURITY: For production deployment, add authentication middleware here.
+# Example: from fastapi.security import HTTPBearer; security = HTTPBearer()
+# Then add Depends(security) to router endpoints that modify data.
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(comparison.router, prefix="/api")
 app.include_router(anomaly.router, prefix="/api")
@@ -43,6 +50,9 @@ if STATIC_DIR.is_dir() and (STATIC_DIR / "index.html").is_file():
         if full_path.startswith("api/"):
             return JSONResponse({"detail": "Not found"}, status_code=404)
         file = STATIC_DIR / full_path
+        resolved = file.resolve()
+        if not str(resolved).startswith(str(STATIC_DIR.resolve())):
+            return JSONResponse({"detail": "Not found"}, status_code=404)
         if file.is_file():
             return FileResponse(str(file))
         return FileResponse(str(STATIC_DIR / "index.html"))

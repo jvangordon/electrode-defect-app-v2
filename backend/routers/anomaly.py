@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 from backend.db import get_cursor
 
@@ -223,7 +223,7 @@ def graphite_run_risk_detail(run_number: str):
         cur.execute("SELECT * FROM runs WHERE run_number = %s", (run_number,))
         run = cur.fetchone()
         if not run:
-            return {"error": "Run not found"}
+            raise HTTPException(status_code=404, detail="Run not found")
 
         cur.execute("""
             SELECT e.*, l.lot_defect_rate, l.risk_tier

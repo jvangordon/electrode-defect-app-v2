@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
 from backend.db import get_cursor
 
@@ -65,7 +65,7 @@ def equipment_trends(furnace: str):
         monthly = [dict(r) for r in cur.fetchall()]
 
         if not monthly:
-            return {"error": "Equipment not found"}
+            raise HTTPException(status_code=404, detail="Equipment not found")
 
         # Compute regression line
         department = monthly[0]["department"]
