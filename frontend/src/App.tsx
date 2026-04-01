@@ -6,6 +6,7 @@ import RunComparison from './pages/RunComparison';
 import AnomalyDetection from './pages/AnomalyDetection';
 import EquipmentTrending from './pages/EquipmentTrending';
 import Investigations from './pages/Investigations';
+import Guide from './pages/Guide';
 import SettingsPanel from './components/SettingsPanel';
 import KnowledgeSearch from './components/KnowledgeSearch';
 
@@ -61,6 +62,7 @@ function App() {
             <Route path="/anomaly" element={<AnomalyDetection />} />
             <Route path="/equipment" element={<EquipmentTrending />} />
             <Route path="/investigations" element={<Investigations />} />
+            <Route path="/guide" element={<Guide onOpenSettings={() => setSettingsOpen(true)} onOpenSearch={() => setSearchOpen(true)} />} />
           </Routes>
         </main>
         <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
