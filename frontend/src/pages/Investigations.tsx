@@ -448,43 +448,50 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
 
       {/* 10-step lifecycle timeline */}
       <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-text-secondary mb-4">Manufacturing Lifecycle</h3>
-        <div className="overflow-x-auto">
-          <div className="flex items-start gap-1 min-w-[900px]">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-base font-semibold text-text-secondary">Manufacturing Lifecycle</h3>
+          <div className="flex items-center gap-4 text-xs text-text-muted">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500/20 border-2 border-emerald-500"></span> Clean</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500/20 border-2 border-red-500"></span> Defect Detected</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#1a1d2b] border-2 border-[#3a3d4a]"></span> No Data</span>
+          </div>
+        </div>
+        <div className="overflow-x-auto pb-2">
+          <div className="flex items-stretch gap-0 min-w-[1000px]">
             {lifecycle.map((step: LifecycleStep, i: number) => {
               const isDefect = step.status === 'defect';
               const isClean = step.status === 'clean';
-              const bgColor = isDefect ? 'bg-danger-dim border-danger/40' :
-                isClean ? 'bg-success-dim border-success/30' :
-                'bg-bg-input border-border';
-              const textColor = isDefect ? 'text-danger' : isClean ? 'text-success' : 'text-text-muted';
+              // Consistent 3-state grammar: green fill = clean, red fill = defect, dark outline = no data
+              const nodeStyle = isDefect
+                ? 'bg-red-500/15 border-2 border-red-500/60'
+                : isClean
+                ? 'bg-emerald-500/15 border-2 border-emerald-500/60'
+                : 'bg-[#1a1d2b] border-2 border-[#3a3d4a]';
+              const labelColor = isDefect ? 'text-red-400' : isClean ? 'text-emerald-400' : 'text-text-muted';
 
               return (
                 <div key={i} className="flex items-center flex-1 min-w-0">
-                  <div className={`flex-1 border rounded-md p-2 text-center min-h-[56px] flex flex-col items-center justify-center ${bgColor}`}>
-                    <div className={`text-xs font-medium ${textColor} leading-tight`}>{step.step_name}</div>
+                  <div className={`flex-1 rounded-lg px-3 py-3 text-center min-h-[68px] flex flex-col items-center justify-center ${nodeStyle}`}>
+                    <div className={`text-xs font-semibold ${labelColor} leading-tight`}>{step.step_name}</div>
                     {step.run_number && (
-                      <div className="text-[11px] font-mono text-text-muted mt-0.5">{step.run_number}</div>
+                      <div className="text-[11px] font-mono text-text-muted/80 mt-1">{step.run_number}</div>
                     )}
                     {step.furnace && (
-                      <div className="text-[11px] text-text-muted">{step.furnace}</div>
+                      <div className="text-[11px] text-text-muted/80">{step.furnace}</div>
                     )}
                     {step.defect_code && (
-                      <div className="text-[11px] font-mono text-danger mt-0.5">{step.defect_code}</div>
+                      <div className="text-[11px] font-mono font-bold text-red-400 mt-1">{step.defect_code}</div>
                     )}
                   </div>
                   {i < lifecycle.length - 1 && (
-                    <div className="w-3 flex items-center justify-center text-text-muted flex-shrink-0">→</div>
+                    <div className="w-6 flex items-center justify-center text-text-muted/40 flex-shrink-0">
+                      <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M0 5h13M10 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
-        </div>
-        <div className="flex items-center gap-4 mt-3 text-[10px] text-text-muted">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-success-dim border border-success/30"></span> Clean</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-danger-dim border border-danger/40"></span> Defect</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-bg-input border border-border"></span> No Data</span>
         </div>
       </div>
 

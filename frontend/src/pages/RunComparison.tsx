@@ -260,7 +260,7 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
           {sensorChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={sensorChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
                 <XAxis dataKey="minutes" tick={{ fontSize: 12 }} label={{ value: 'Minutes from start', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: '#9ca3af' } }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip content={<ChartTooltip formatter={(v: number) => v?.toFixed(3)} />} />

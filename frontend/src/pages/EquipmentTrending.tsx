@@ -106,7 +106,7 @@ export default function EquipmentTrending() {
               <h3 className="text-sm font-semibold text-text-secondary mb-4">Cross-Equipment Comparison — Current Defect Rate</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={compData.current} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#2a2d3a" />
                   <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} domain={[0, 'auto']} />
                   <YAxis type="category" dataKey="furnace" tick={{ fontSize: 12 }} width={50} />
                   <Tooltip content={<ChartTooltip formatter={(v: number) => `${(v * 100).toFixed(2)}%`} />} />
@@ -169,7 +169,7 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
         <h3 className="text-sm font-semibold text-text-secondary mb-4">Defect Rate Trend</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={mergedData}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
             <XAxis dataKey="month" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
             <Tooltip content={<ChartTooltip formatter={(v: number) => `${v.toFixed(2)}%`} />} />
@@ -183,11 +183,11 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
       {/* Secondary metrics */}
       <div className="grid grid-cols-2 gap-4">
         <MetricChart data={chartData} dataKey="avg_kwh" name="Avg kWh" color="#06b6d4" />
-        <MetricChart data={chartData} dataKey="avg_downtime" name="Avg Downtime (hrs)" color="#f97316" />
+        <MetricChart data={chartData} dataKey="avg_downtime" name="Avg Downtime (hrs)" color="#ef4444" />
         {department === 'bake' && (
           <>
-            <MetricChart data={chartData} dataKey="avg_run_time" name="Avg Run Time (hrs)" color="#8b5cf6" />
-            <MetricChart data={chartData} dataKey="avg_car_deck" name="Avg Car Deck" color="#ec4899" />
+            <MetricChart data={chartData} dataKey="avg_run_time" name="Avg Run Time (hrs)" color="#06b6d4" />
+            <MetricChart data={chartData} dataKey="avg_car_deck" name="Avg Car Deck" color="#f59e0b" />
           </>
         )}
       </div>
@@ -201,7 +201,7 @@ function MetricChart({ data, dataKey, name, color }: { data: Record<string, unkn
       <h3 className="text-xs font-semibold text-text-secondary mb-2">{name}</h3>
       <ResponsiveContainer width="100%" height={140}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip content={<ChartTooltip formatter={(v: number) => v?.toFixed(1)} />} />

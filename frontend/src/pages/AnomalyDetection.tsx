@@ -71,7 +71,7 @@ function BakeAnomalies() {
         </div>
         <ResponsiveContainer width="100%" height={320}>
           <ScatterChart>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
             <XAxis dataKey="idx" tick={{ fontSize: 12 }} label={{ value: 'Run sequence', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: '#9ca3af' } }} />
             <YAxis dataKey="car_deck" domain={[0, 10]} tick={{ fontSize: 12 }} label={{ value: 'Car Deck', angle: -90, position: 'insideLeft', style: { fontSize: 12, fill: '#9ca3af' } }} />
             <Tooltip content={({ active, payload }) => {
@@ -107,7 +107,7 @@ function BakeAnomalies() {
         <h3 className="text-base font-semibold text-text-secondary mb-4">Defect Rate by Run (Bake)</h3>
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={spcChartData}>
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
             <XAxis dataKey="idx" tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
             <Tooltip content={<ChartTooltip formatter={(v: number) => `${v.toFixed(1)}%`} />} />

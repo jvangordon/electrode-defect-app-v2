@@ -58,12 +58,12 @@ export default function Dashboard() {
               month: new Date(m.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
               rate: (m.defect_rate * 100),
             }))}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
               <Tooltip content={<ChartTooltip formatter={(v: number) => `${v.toFixed(2)}%`} />} />
               <Area type="monotone" dataKey="rate" name="Defect Rate"
-                stroke="#f59e0b" fill="rgba(245,158,11,0.15)" strokeWidth={2} />
+                stroke="#f59e0b" fill="rgba(245,158,11,0.08)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
