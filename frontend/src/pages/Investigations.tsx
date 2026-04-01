@@ -531,7 +531,7 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
             Sibling Electrodes (same graphite run: {electrode.run_number_og})
           </h3>
           <div className="max-h-[250px] overflow-y-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-sm">
               <thead className="sticky top-0 bg-bg-card">
                 <tr className="text-text-muted uppercase tracking-wider border-b border-border">
                   <th className="px-2 py-1 text-left">Pos</th>

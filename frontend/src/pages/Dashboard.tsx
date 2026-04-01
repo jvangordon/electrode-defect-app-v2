@@ -110,7 +110,7 @@ export default function Dashboard() {
                   }`}
                 >
                   <div className="text-sm font-semibold text-text-primary">{f.furnace}</div>
-                  <div className="text-xs text-text-muted uppercase" style={{ minHeight: '16px', fontSize: '12px' }}>{f.department}</div>
+                  <div className="text-sm text-text-muted uppercase" style={{ minHeight: '16px', fontSize: '12px' }}>{f.department}</div>
                   <div className="mt-1.5">
                     <DefectRateBadge rate={f.avg_defect_rate} />
                   </div>
@@ -193,7 +193,7 @@ export default function Dashboard() {
 function KpiCard({ label, value, sub, trend }: { label: string; value: string | number; sub?: string; trend?: 'up' | 'down' }) {
   return (
     <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl shadow-sm p-6">
-      <div className="text-xs text-text-muted uppercase tracking-wider">{label}</div>
+      <div className="text-sm text-text-muted uppercase tracking-wider">{label}</div>
       <div className="flex items-baseline gap-2 mt-2">
         <span className="font-mono text-2xl font-bold text-text-primary">{value}</span>
         {trend && (
@@ -225,7 +225,7 @@ function DashboardSkeleton() {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="p-6 flex items-center justify-center min-h-[400px]">
+    <div className="p-8 flex items-center justify-center min-h-[400px]">
       <div className="bg-danger-dim border border-danger/20 rounded-lg p-6 max-w-md text-center">
         <AlertTriangle size={24} className="text-danger mx-auto mb-2" />
         <div className="text-sm text-danger">{message}</div>

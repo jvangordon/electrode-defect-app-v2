@@ -103,7 +103,7 @@ export default function EquipmentTrending() {
           {/* Cross-equipment comparison */}
           {compData && !compLoading && (
             <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-text-secondary mb-4">Cross-Equipment Comparison — Current Defect Rate</h3>
+              <h3 className="text-base font-semibold text-text-secondary mb-4">Cross-Equipment Comparison — Current Defect Rate</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={compData.current} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#2a2d3a" />
@@ -166,7 +166,7 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
 
       {/* Defect rate trend with regression */}
       <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-text-secondary mb-4">Defect Rate Trend</h3>
+        <h3 className="text-base font-semibold text-text-secondary mb-4">Defect Rate Trend</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={mergedData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2d3a" />
