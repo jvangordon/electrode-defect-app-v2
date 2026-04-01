@@ -32,7 +32,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   // Dashboard
-  getDashboard: () => request<DashboardOverview>('/dashboard/overview'),
+  getDashboard: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<DashboardOverview>(`/dashboard/overview${qs}`);
+  },
 
   // Runs / Comparison
   getRuns: (params?: Record<string, string>) => {
@@ -44,13 +47,18 @@ export const api = {
   getRunDetail: (runNumber: string) => request<RunDetail>(`/runs/${runNumber}`),
 
   // Anomaly
-  getBakeAnomalies: (limit = 50) => request<BakeAnomalyResponse>(`/anomalies/bake?limit=${limit}`),
+  getBakeAnomalies: (limit = 50, params?: Record<string, string>) => {
+    const base = new URLSearchParams({ limit: String(limit), ...params });
+    return request<BakeAnomalyResponse>(`/anomalies/bake?${base.toString()}`);
+  },
   getGraphiteRisk: (limit = 50) => request<GraphiteRiskResponse>(`/anomalies/graphite?limit=${limit}`),
   getGraphiteRunRisk: (runNumber: string) => request<GraphiteRunRiskDetail>(`/anomalies/graphite/${runNumber}`),
 
   // Equipment
-  getEquipment: (department?: string) => {
-    const qs = department ? `?department=${department}` : '';
+  getEquipment: (department?: string, dateParams?: Record<string, string>) => {
+    const params = new URLSearchParams(dateParams);
+    if (department) params.set('department', department);
+    const qs = params.toString() ? `?${params.toString()}` : '';
     return request<EquipmentListResponse>(`/equipment${qs}`);
   },
   getEquipmentTrends: (furnace: string) => request<EquipmentTrendsResponse>(`/equipment/${furnace}/trends`),

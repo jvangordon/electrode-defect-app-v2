@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { SkeletonTable, SkeletonChart } from '../components/LoadingSkeleton';
 import StatusBadge, { DefectRateBadge } from '../components/StatusBadge';
 import ChartTooltip from '../components/ChartTooltip';
+import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter';
+import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
+import { useLocation } from 'react-router-dom';
 import { GitCompareArrows, TrendingUp } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -28,12 +31,27 @@ export default function RunComparison() {
   const [comparing, setComparing] = useState(false);
   const [mode, setMode] = useState<Mode>('compare');
   const [trendFurnace, setTrendFurnace] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange>(getInitialRange('All'));
   const { isDark } = useTheme();
   const card = useCardClass();
+  const location = useLocation();
+
+  // Pre-select run from URL query param (e.g. /comparison?run=XXX)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const runParam = params.get('run');
+    if (runParam && !selectedRuns.includes(runParam)) {
+      setSelectedRuns([runParam]);
+    }
+  }, [location.search]);
+
+  const dateParams: Record<string, string> = {};
+  if (dateRange.startDate) dateParams.start_date = dateRange.startDate;
+  if (dateRange.endDate) dateParams.end_date = dateRange.endDate;
 
   const { data: runData, loading: runsLoading } = useApi(
-    () => api.getRuns({ department, limit: '100', ...(furnaceFilter ? { furnace: furnaceFilter } : {}) }),
-    [department, furnaceFilter],
+    () => api.getRuns({ department, limit: '100', ...(furnaceFilter ? { furnace: furnaceFilter } : {}), ...dateParams }),
+    [department, furnaceFilter, dateRange.startDate, dateRange.endDate],
   );
 
   // Trend mode: fetch last 30 runs for selected furnace
@@ -119,6 +137,7 @@ export default function RunComparison() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <DateRangeFilter defaultPreset="All" onChange={setDateRange} />
           {(['bake', 'graphite'] as const).map(d => (
             <button key={d} onClick={() => { setDepartment(d); setSelectedRuns([]); setComparing(false); setFurnaceFilter(''); setTrendFurnace(''); }}
               className={`px-5 py-3 text-sm font-semibold rounded-lg transition-colors ${

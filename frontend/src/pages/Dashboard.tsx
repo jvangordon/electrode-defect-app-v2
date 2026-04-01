@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { SkeletonCard } from '../components/LoadingSkeleton';
 import StatusBadge, { DefectRateBadge } from '../components/StatusBadge';
 import ChartTooltip from '../components/ChartTooltip';
+import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter';
+import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, TrendingUp, ArrowUpRight } from 'lucide-react';
@@ -19,7 +22,12 @@ function useCardClass() {
 }
 
 export default function Dashboard() {
-  const { data, loading, error } = useApi(() => api.getDashboard(), []);
+  const [dateRange, setDateRange] = useState<DateRange>(getInitialRange('90d'));
+  const dateParams: Record<string, string> = {};
+  if (dateRange.startDate) dateParams.start_date = dateRange.startDate;
+  if (dateRange.endDate) dateParams.end_date = dateRange.endDate;
+
+  const { data, loading, error } = useApi(() => api.getDashboard(Object.keys(dateParams).length ? dateParams : undefined), [dateRange.startDate, dateRange.endDate]);
   const { isDark } = useTheme();
   const card = useCardClass();
 
@@ -42,8 +50,11 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>Operations Dashboard</h1>
           <p className="text-sm mt-1" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>Real-time overview of electrode manufacturing quality</p>
         </div>
-        <div className="text-[13px]" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>
-          Last 90 days &middot; {recent_stats.total_runs} runs
+        <div className="flex items-center gap-4">
+          <DateRangeFilter defaultPreset="90d" onChange={setDateRange} />
+          <div className="text-[13px]" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>
+            {recent_stats.total_runs} runs
+          </div>
         </div>
       </div>
 

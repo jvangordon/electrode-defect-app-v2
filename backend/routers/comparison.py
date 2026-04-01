@@ -9,6 +9,8 @@ router = APIRouter(tags=["comparison"])
 def list_runs(
     department: Optional[str] = None,
     furnace: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     limit: int = Query(100, le=500),
     offset: int = 0,
 ):
@@ -21,6 +23,12 @@ def list_runs(
         if furnace:
             conditions.append("furnace = %s")
             params.append(furnace)
+        if start_date:
+            conditions.append("start_time >= %s")
+            params.append(start_date)
+        if end_date:
+            conditions.append("start_time < %s")
+            params.append(end_date)
 
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
         cur.execute(

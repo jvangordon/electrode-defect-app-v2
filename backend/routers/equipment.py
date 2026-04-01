@@ -6,7 +6,11 @@ router = APIRouter(tags=["equipment"])
 
 
 @router.get("/equipment")
-def list_equipment(department: Optional[str] = None):
+def list_equipment(
+    department: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
     """List all equipment with current status and trend indicators."""
     with get_cursor() as cur:
         conditions = []
@@ -14,6 +18,12 @@ def list_equipment(department: Optional[str] = None):
         if department:
             conditions.append("department = %s")
             params.append(department)
+        if start_date:
+            conditions.append("month >= %s")
+            params.append(start_date)
+        if end_date:
+            conditions.append("month < %s")
+            params.append(end_date)
 
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
 

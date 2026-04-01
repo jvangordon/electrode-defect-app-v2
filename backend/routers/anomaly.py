@@ -6,11 +6,26 @@ router = APIRouter(tags=["anomaly"])
 
 
 @router.get("/anomalies/bake")
-def bake_anomalies(limit: int = Query(50, le=200)):
+def bake_anomalies(
+    limit: int = Query(50, le=200),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
     """SPC-style anomaly detection for bake runs.
     Flags runs where car_deck or duration deviates significantly from population mean.
     """
     with get_cursor() as cur:
+        # Build date filter
+        date_conditions = []
+        date_params: list = []
+        if start_date:
+            date_conditions.append("start_time >= %s")
+            date_params.append(start_date)
+        if end_date:
+            date_conditions.append("start_time < %s")
+            date_params.append(end_date)
+        date_filter = (" AND " + " AND ".join(date_conditions)) if date_conditions else ""
+
         # Compute population stats for bake
         cur.execute("""
             SELECT
@@ -24,16 +39,17 @@ def bake_anomalies(limit: int = Query(50, le=200)):
         stats = dict(cur.fetchone())
 
         # Fetch recent bake runs with anomaly scoring
-        cur.execute("""
+        cur.execute(f"""
             SELECT run_number, furnace, car_deck, profile,
                    total_pieces, total_weight, duration_hours,
                    actual_kwh, total_downtime,
                    defect_count, defect_rate, start_time
             FROM runs
             WHERE department = 'bake'
+            {date_filter}
             ORDER BY start_time DESC
             LIMIT %s
-        """, (limit,))
+        """, date_params + [limit])
         runs = [dict(r) for r in cur.fetchall()]
 
         # Read configurable z-threshold from app_settings
@@ -114,12 +130,13 @@ def bake_anomalies(limit: int = Query(50, le=200)):
             })
 
         # SPC chart data (car_deck and defect_rate over time)
-        cur.execute("""
+        cur.execute(f"""
             SELECT run_number, furnace, car_deck, defect_rate, start_time
             FROM runs
             WHERE department = 'bake'
+            {date_filter}
             ORDER BY start_time
-        """)
+        """, date_params)
         spc_data = [dict(r) for r in cur.fetchall()]
 
     return {

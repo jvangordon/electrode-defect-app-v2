@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { SkeletonCard, SkeletonChart } from '../components/LoadingSkeleton';
 import StatusBadge, { DefectRateBadge } from '../components/StatusBadge';
 import ChartTooltip from '../components/ChartTooltip';
+import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter';
+import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
+import { useLocation } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -22,12 +25,27 @@ function useCardClass() {
 export default function EquipmentTrending() {
   const [department, setDepartment] = useState<string>('');
   const [selectedFurnace, setSelectedFurnace] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange>(getInitialRange('All'));
   const { isDark } = useTheme();
   const card = useCardClass();
+  const location = useLocation();
+
+  // Pre-select furnace from URL query param (e.g. /equipment?furnace=BF-3)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const furnaceParam = params.get('furnace');
+    if (furnaceParam) {
+      setSelectedFurnace(furnaceParam);
+    }
+  }, [location.search]);
+
+  const dateParams: Record<string, string> = {};
+  if (dateRange.startDate) dateParams.start_date = dateRange.startDate;
+  if (dateRange.endDate) dateParams.end_date = dateRange.endDate;
 
   const { data: equipData, loading: equipLoading } = useApi(
-    () => api.getEquipment(department || undefined),
-    [department],
+    () => api.getEquipment(department || undefined, Object.keys(dateParams).length ? dateParams : undefined),
+    [department, dateRange.startDate, dateRange.endDate],
   );
   const { data: trendData, loading: trendLoading } = useApi(
     () => selectedFurnace ? api.getEquipmentTrends(selectedFurnace) : Promise.resolve(null),
@@ -47,7 +65,8 @@ export default function EquipmentTrending() {
     <div className="p-10 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight" style={{ color: textPrimary }}>Equipment Trending</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <DateRangeFilter defaultPreset="All" onChange={setDateRange} />
           {[{ v: '', l: 'All' }, { v: 'bake', l: 'Bake' }, { v: 'graphite', l: 'Graphite' }].map(d => (
             <button key={d.v} onClick={() => { setDepartment(d.v); setSelectedFurnace(null); }}
               className={`px-5 py-3 text-sm font-semibold rounded-lg transition-colors ${

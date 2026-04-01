@@ -4,6 +4,8 @@ import { api } from '../lib/api';
 import { SkeletonTable, SkeletonChart } from '../components/LoadingSkeleton';
 import StatusBadge, { DefectRateBadge } from '../components/StatusBadge';
 import ChartTooltip from '../components/ChartTooltip';
+import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter';
+import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
 import { AlertTriangle } from 'lucide-react';
 import {
@@ -21,14 +23,20 @@ function useCardClass() {
 
 export default function AnomalyDetection() {
   const [tab, setTab] = useState<'bake' | 'graphite'>('bake');
+  const [dateRange, setDateRange] = useState<DateRange>(getInitialRange('All'));
   const { isDark } = useTheme();
   const textPrimary = isDark ? '#e5e7eb' : '#1a1d2b';
+
+  const dateParams: Record<string, string> = {};
+  if (dateRange.startDate) dateParams.start_date = dateRange.startDate;
+  if (dateRange.endDate) dateParams.end_date = dateRange.endDate;
 
   return (
     <div className="p-10 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight" style={{ color: textPrimary }}>Anomaly Detection</h1>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          <DateRangeFilter defaultPreset="All" onChange={setDateRange} />
           {(['bake', 'graphite'] as const).map(d => (
             <button key={d} onClick={() => setTab(d)}
               className={`px-5 py-3 text-sm font-semibold rounded-lg transition-colors ${
@@ -42,13 +50,16 @@ export default function AnomalyDetection() {
         </div>
       </div>
 
-      {tab === 'bake' ? <BakeAnomalies /> : <GraphiteRisk />}
+      {tab === 'bake' ? <BakeAnomalies dateParams={dateParams} /> : <GraphiteRisk />}
     </div>
   );
 }
 
-function BakeAnomalies() {
-  const { data, loading } = useApi(() => api.getBakeAnomalies(100), []);
+function BakeAnomalies({ dateParams }: { dateParams: Record<string, string> }) {
+  const { data, loading } = useApi(
+    () => api.getBakeAnomalies(100, Object.keys(dateParams).length ? dateParams : undefined),
+    [dateParams.start_date, dateParams.end_date],
+  );
   const { isDark } = useTheme();
   const card = useCardClass();
   const gridStroke = isDark ? '#252a3a' : '#e2e5eb';
