@@ -100,9 +100,9 @@ export default function Dashboard() {
       </div>
 
       {/* Furnace Status Grid + Recent Anomalies */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
         {/* Furnace Grid */}
-        <div className={`${card} p-6`}>
+        <div className={`${card} p-6 lg:col-span-3`}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: isDark ? '#9ca3af' : '#4b5068' }}>Furnace Status (last 5 runs each)</h3>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {furnace_status.map((f: FurnaceStatus) => {
@@ -136,7 +136,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Anomalies */}
-        <div className={`${card} p-6`}>
+        <div className={`${card} p-6 flex flex-col lg:col-span-2`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: isDark ? '#9ca3af' : '#4b5068' }}>
               <AlertTriangle size={16} className="text-warning" />
@@ -146,12 +146,18 @@ export default function Dashboard() {
               View all <ArrowUpRight size={14} />
             </Link>
           </div>
-          <div className="space-y-1 max-h-[300px] overflow-y-auto">
+          <div className="space-y-1 flex-1 overflow-y-auto overscroll-contain">
             {recent_anomalies.map((a: RecentAnomaly) => (
-              <Link
+              <div
                 key={a.run_number}
-                to={`/comparison?run=${a.run_number}`}
-                className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-bg-card-hover transition-colors"
+                onClick={(e) => {
+                  // Only navigate on deliberate click, not drag/scroll
+                  const target = e.target as HTMLElement;
+                  if (!target.closest('a')) {
+                    window.location.hash = `/comparison?run=${a.run_number}`;
+                  }
+                }}
+                className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-bg-card-hover transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-sm" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>{a.run_number}</span>
@@ -162,7 +168,7 @@ export default function Dashboard() {
                   <DefectRateBadge rate={a.defect_rate} />
                   <span className="text-sm" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>{a.defect_count}/{a.total_pieces}</span>
                 </div>
-              </Link>
+              </div>
             ))}
             {recent_anomalies.length === 0 && (
               <div className="text-sm py-6 text-center" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>No high-defect runs</div>
