@@ -268,25 +268,28 @@ function FurnaceTrend({ runs, loading, furnace, department, selectedRuns, onDotC
               <Tooltip content={<TrendTooltip selectedRuns={selectedRuns} />} />
               <Scatter
                 data={chartData}
+                dataKey="defect_rate"
                 onClick={(data: any) => {
                   if (data?.run_number) onDotClick(data.run_number);
                 }}
                 cursor="pointer"
-              >
-                {chartData.map((entry, idx) => {
-                  const isSelected = selectedRuns.includes(entry.run_number);
+                shape={(props: any) => {
+                  const { cx, cy, payload } = props;
+                  if (!cx || !cy) return null;
+                  const isSelected = selectedRuns.includes(payload?.run_number);
                   return (
                     <circle
-                      key={idx}
-                      r={isSelected ? 8 : 6}
-                      fill={isSelected ? '#f59e0b' : entry.fill}
-                      stroke={isSelected ? '#ffffff' : 'none'}
-                      strokeWidth={isSelected ? 2 : 0}
+                      cx={cx}
+                      cy={cy}
+                      r={isSelected ? 9 : 7}
+                      fill={isSelected ? '#f59e0b' : (payload?.fill || '#06b6d4')}
+                      stroke={isSelected ? '#ffffff' : 'rgba(0,0,0,0.3)'}
+                      strokeWidth={isSelected ? 2.5 : 1}
                       style={{ cursor: 'pointer' }}
                     />
                   );
-                })}
-              </Scatter>
+                }}
+              />
             </ScatterChart>
           </ResponsiveContainer>
         ) : (
