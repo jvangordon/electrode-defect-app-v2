@@ -31,13 +31,13 @@ export default function EquipmentTrending() {
   const equipment = equipData?.equipment || [];
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-4">
+    <div className="p-8 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-text-primary">Equipment Trending</h1>
+        <h1 className="text-xl font-semibold text-text-primary tracking-tight">Equipment Trending</h1>
         <div className="flex gap-2">
           {[{ v: '', l: 'All' }, { v: 'bake', l: 'Bake' }, { v: 'graphite', l: 'Graphite' }].map(d => (
             <button key={d.v} onClick={() => { setDepartment(d.v); setSelectedFurnace(null); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 department === d.v ? 'bg-accent text-black' : 'bg-bg-card text-text-secondary border border-border hover:text-text-primary'
               }`}>
               {d.l}
@@ -46,11 +46,11 @@ export default function EquipmentTrending() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Equipment list */}
-        <div className="bg-bg-card border border-border rounded-lg overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border">
-            <h3 className="text-sm font-medium text-text-secondary">Equipment (sorted by defect rate)</h3>
+        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-[13px] font-semibold text-text-secondary tracking-wide">Equipment (sorted by defect rate)</h3>
           </div>
           {equipLoading ? <div className="p-3 space-y-2">{Array.from({length: 8}).map((_, i) => <SkeletonCard key={i} height="h-12" />)}</div> : (
             <div className="max-h-[600px] overflow-y-auto">
@@ -64,7 +64,7 @@ export default function EquipmentTrending() {
                   <div key={e.furnace}
                     onClick={() => setSelectedFurnace(e.furnace)}
                     className={`flex items-center justify-between px-4 py-3 border-b border-border/50 cursor-pointer transition-colors hover:bg-bg-card-hover ${
-                      selectedFurnace === e.furnace ? 'bg-accent-glow border-l-2 border-l-accent' : ''
+                      selectedFurnace === e.furnace ? 'bg-[#252421] border-l-[3px] border-l-amber-500' : ''
                     }`}>
                     <div>
                       <div className="text-sm font-medium text-text-primary">{e.furnace}</div>
@@ -95,20 +95,20 @@ export default function EquipmentTrending() {
               </div>
             </div>
           ) : (
-            <div className="bg-bg-card border border-border rounded-lg h-[300px] flex items-center justify-center text-text-muted text-sm">
+            <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl h-[300px] flex items-center justify-center text-text-muted text-sm">
               Select equipment to view trends
             </div>
           )}
 
           {/* Cross-equipment comparison */}
           {compData && !compLoading && (
-            <div className="bg-bg-card border border-border rounded-lg p-4">
-              <h3 className="text-sm font-medium text-text-secondary mb-3">Cross-Equipment Comparison — Current Defect Rate</h3>
+            <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-text-secondary mb-4">Cross-Equipment Comparison — Current Defect Rate</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={compData.current} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} domain={[0, 'auto']} />
-                  <YAxis type="category" dataKey="furnace" tick={{ fontSize: 10 }} width={50} />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} domain={[0, 'auto']} />
+                  <YAxis type="category" dataKey="furnace" tick={{ fontSize: 12 }} width={50} />
                   <Tooltip content={<ChartTooltip formatter={(v: number) => `${(v * 100).toFixed(2)}%`} />} />
                   <ReferenceLine x={0.02} stroke="#10b981" strokeDasharray="3 3" label={{ value: '2%', position: 'top', fill: '#10b981', fontSize: 9 }} />
                   <ReferenceLine x={0.05} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: '5%', position: 'top', fill: '#f59e0b', fontSize: 9 }} />
@@ -156,7 +156,7 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
   return (
     <>
       {/* Header */}
-      <div className="bg-bg-card border border-border rounded-lg p-4">
+      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-lg font-semibold text-text-primary">{furnace}</h3>
           <div className={`text-sm font-medium ${trendColor}`}>{trendDir}</div>
@@ -165,13 +165,13 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
       </div>
 
       {/* Defect rate trend with regression */}
-      <div className="bg-bg-card border border-border rounded-lg p-4">
-        <h3 className="text-sm font-medium text-text-secondary mb-3">Defect Rate Trend</h3>
+      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-text-secondary mb-4">Defect Rate Trend</h3>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={mergedData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
+            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} />
             <Tooltip content={<ChartTooltip formatter={(v: number) => `${v.toFixed(2)}%`} />} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Line type="monotone" dataKey="defect_rate" name="Defect Rate" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
@@ -197,13 +197,13 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
 
 function MetricChart({ data, dataKey, name, color }: { data: Record<string, unknown>[]; dataKey: string; name: string; color: string }) {
   return (
-    <div className="bg-bg-card border border-border rounded-lg p-4">
-      <h3 className="text-xs font-medium text-text-secondary mb-2">{name}</h3>
+    <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-4">
+      <h3 className="text-xs font-semibold text-text-secondary mb-2">{name}</h3>
       <ResponsiveContainer width="100%" height={140}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" tick={{ fontSize: 9 }} />
-          <YAxis tick={{ fontSize: 9 }} />
+          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
           <Tooltip content={<ChartTooltip formatter={(v: number) => v?.toFixed(1)} />} />
           <Line type="monotone" dataKey={dataKey} name={name} stroke={color} strokeWidth={1.5} dot={{ r: 2 }} />
         </LineChart>

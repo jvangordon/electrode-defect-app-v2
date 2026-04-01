@@ -35,34 +35,34 @@ export default function Sidebar() {
   return (
     <aside
       className={`flex flex-col h-screen sticky top-0 transition-all duration-200 ${
-        collapsed ? 'w-16' : 'w-56'
+        collapsed ? 'w-16' : 'w-[220px]'
       }`}
       style={{ background: '#0a0c10', borderRight: '1px solid var(--color-border)' }}
     >
       {/* Logo area */}
-      <div className={`flex items-center gap-3 px-4 h-14 border-b border-border ${collapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-3 px-4 h-16 mb-6 border-b border-border ${collapsed ? 'justify-center' : ''}`}>
         <div className="text-accent flex-shrink-0">
           <EdrsLogo size={collapsed ? 24 : 28} />
         </div>
         {!collapsed && (
           <div>
             <div className="text-sm font-semibold text-text-primary tracking-wider">EDRS</div>
-            <div className="text-[10px] text-text-muted tracking-widest uppercase">Electrode Defect</div>
+            <div className="text-xs text-text-muted tracking-widest uppercase">Electrode Defect</div>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5">
+      <nav className="flex-1 py-3 px-2.5 space-y-1">
         {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-colors ${
+              `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-accent-glow text-accent'
+                  ? 'bg-accent-glow text-accent border-l-[3px] border-l-accent'
                   : 'text-text-secondary hover:text-text-primary hover:bg-[#141722]'
               } ${collapsed ? 'justify-center' : ''}`
             }
@@ -74,13 +74,21 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center h-10 border-t border-border text-text-muted hover:text-text-primary transition-colors"
-      >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
+      {/* Footer */}
+      <div className="border-t border-border">
+        {!collapsed && (
+          <div className="px-4 py-2.5 flex items-center gap-2 text-xs text-text-muted">
+            <span className="w-2 h-2 rounded-full bg-[#FF3621]"></span>
+            <span>Powered by Databricks</span>
+          </div>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center justify-center w-full h-10 text-text-muted hover:text-text-primary transition-colors"
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
     </aside>
   );
 }

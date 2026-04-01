@@ -48,14 +48,14 @@ export default function RunComparison() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-4">
+    <div className="p-8 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-text-primary">Run Comparison</h1>
-        <div className="flex items-center gap-2">
+        <h1 className="text-xl font-semibold text-text-primary tracking-tight">Run Comparison</h1>
+        <div className="flex items-center gap-3">
           {/* Department tabs */}
           {(['bake', 'graphite'] as const).map(d => (
             <button key={d} onClick={() => { setDepartment(d); setSelectedRuns([]); setComparing(false); setFurnaceFilter(''); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 department === d
                   ? 'bg-accent text-black'
                   : 'bg-bg-card text-text-secondary border border-border hover:text-text-primary'
@@ -65,7 +65,7 @@ export default function RunComparison() {
           ))}
           {/* Furnace filter */}
           <select value={furnaceFilter} onChange={e => setFurnaceFilter(e.target.value)}
-            className="bg-bg-input border border-border rounded px-2 py-1.5 text-xs text-text-primary">
+            className="bg-bg-input border border-border rounded-lg px-3 py-2.5 text-sm text-text-primary">
             <option value="">All furnaces</option>
             {furnaces.map((f: string) => <option key={f} value={f}>{f}</option>)}
           </select>
@@ -75,69 +75,69 @@ export default function RunComparison() {
       {!comparing ? (
         <>
           {/* Run selection table */}
-          <div className="bg-bg-card border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-              <div className="text-xs text-text-muted">
+          <div className="bg-bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+              <div className="text-sm text-text-muted">
                 Select 2 runs to compare &middot; {selectedRuns.length}/2 selected
               </div>
               <button onClick={startCompare} disabled={selectedRuns.length !== 2}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-accent text-black disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/90 transition-colors">
-                <GitCompareArrows size={14} /> Compare
+                className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg bg-accent text-black disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/90 transition-colors">
+                <GitCompareArrows size={16} /> Compare
               </button>
             </div>
             {runsLoading ? <div className="p-4"><SkeletonTable rows={8} /></div> : (
               <div className="max-h-[480px] overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-bg-card border-b border-border">
-                    <tr className="text-text-muted uppercase tracking-wider">
-                      <th className="px-3 py-2 text-left w-8"></th>
-                      <th className="px-3 py-2 text-left">Run</th>
-                      <th className="px-3 py-2 text-left">Furnace</th>
-                      <th className="px-3 py-2 text-left">Date</th>
-                      <th className="px-3 py-2 text-right">Pieces</th>
-                      <th className="px-3 py-2 text-right">Defects</th>
-                      <th className="px-3 py-2 text-right">Rate</th>
-                      {department === 'bake' && <th className="px-3 py-2 text-right">Car Deck</th>}
-                      {department === 'graphite' && <th className="px-3 py-2 text-center">Risk</th>}
-                      <th className="px-3 py-2 text-right">kWh</th>
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-bg-card border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
+                    <tr className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left w-8"></th>
+                      <th className="px-4 py-3 text-left">Run</th>
+                      <th className="px-4 py-3 text-left">Furnace</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-right">Pieces</th>
+                      <th className="px-4 py-3 text-right">Defects</th>
+                      <th className="px-4 py-3 text-right">Rate</th>
+                      {department === 'bake' && <th className="px-4 py-3 text-right">Car Deck</th>}
+                      {department === 'graphite' && <th className="px-4 py-3 text-center">Risk</th>}
+                      <th className="px-4 py-3 text-right">kWh</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {runs.map((r: Run) => {
+                    {runs.map((r: Run, idx: number) => {
                       const isSelected = selectedRuns.includes(r.run_number);
                       const rowColor = r.defect_rate > 0.1 ? 'bg-danger-dim/30' :
                         r.defect_rate > 0.06 ? 'bg-warning-dim/30' : '';
                       return (
                         <tr key={r.run_number} onClick={() => toggleRun(r.run_number)}
-                          className={`cursor-pointer border-b border-border/50 transition-colors hover:bg-bg-card-hover ${rowColor} ${
+                          className={`cursor-pointer border-b border-border/50 transition-colors hover:bg-white/[0.03] ${rowColor} ${
                             isSelected ? 'ring-1 ring-inset ring-accent/50 bg-accent-glow' : ''
-                          }`}>
-                          <td className="px-3 py-2">
+                          } ${idx % 2 === 1 && !isSelected && !rowColor ? 'bg-white/[0.01]' : ''}`}>
+                          <td className="px-4 py-3">
                             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
                               isSelected ? 'border-accent bg-accent' : 'border-border'
                             }`}>
-                              {isSelected && <span className="text-black text-[10px] font-bold">
+                              {isSelected && <span className="text-black text-xs font-bold">
                                 {selectedRuns.indexOf(r.run_number) + 1}
                               </span>}
                             </div>
                           </td>
-                          <td className="px-3 py-2 font-mono text-text-primary">{r.run_number}</td>
-                          <td className="px-3 py-2 text-text-secondary">{r.furnace}</td>
-                          <td className="px-3 py-2 text-text-secondary">
+                          <td className="px-4 py-3 font-mono text-text-primary">{r.run_number}</td>
+                          <td className="px-4 py-3 text-text-secondary">{r.furnace}</td>
+                          <td className="px-4 py-3 text-text-secondary">
                             {r.start_time ? new Date(r.start_time).toLocaleDateString() : '-'}
                           </td>
-                          <td className="px-3 py-2 text-right font-mono">{r.total_pieces}</td>
-                          <td className="px-3 py-2 text-right font-mono">{r.defect_count}</td>
-                          <td className="px-3 py-2 text-right"><DefectRateBadge rate={r.defect_rate} /></td>
+                          <td className="px-4 py-3 text-right font-mono">{r.total_pieces}</td>
+                          <td className="px-4 py-3 text-right font-mono">{r.defect_count}</td>
+                          <td className="px-4 py-3 text-right"><DefectRateBadge rate={r.defect_rate} /></td>
                           {department === 'bake' && (
-                            <td className="px-3 py-2 text-right font-mono">{r.car_deck}</td>
+                            <td className="px-4 py-3 text-right font-mono">{r.car_deck}</td>
                           )}
                           {department === 'graphite' && (
-                            <td className="px-3 py-2 text-center">
+                            <td className="px-4 py-3 text-center">
                               {r.risk_score && <StatusBadge status={r.risk_score} />}
                             </td>
                           )}
-                          <td className="px-3 py-2 text-right font-mono text-text-secondary">
+                          <td className="px-4 py-3 text-right font-mono text-text-secondary">
                             {r.actual_kwh?.toLocaleString()}
                           </td>
                         </tr>
@@ -187,8 +187,8 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
   }, [activeTag, sensors_a, sensors_b, run_a, run_b]);
 
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="text-xs text-accent hover:underline flex items-center gap-1">
+    <div className="space-y-8">
+      <button onClick={onBack} className="text-sm text-accent hover:underline flex items-center gap-1">
         ← Back to run list
       </button>
 
@@ -199,28 +199,32 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
       </div>
 
       {/* Parameter diff */}
-      <div className="bg-bg-card border border-border rounded-lg overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border">
-          <h3 className="text-sm font-medium text-text-secondary">Parameter Comparison</h3>
+      <div className="bg-bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border">
+          <h3 className="text-base font-semibold text-text-secondary">Parameter Comparison</h3>
         </div>
-        <table className="w-full text-xs">
-          <thead className="bg-bg-card border-b border-border">
-            <tr className="text-text-muted uppercase tracking-wider">
-              <th className="px-4 py-2 text-left">Parameter</th>
-              <th className="px-4 py-2 text-right">Run A</th>
-              <th className="px-4 py-2 text-right">Run B</th>
-              <th className="px-4 py-2 text-right">Deviation</th>
+        <table className="w-full text-sm">
+          <thead className="bg-bg-card border-b border-border shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
+            <tr className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+              <th className="px-5 py-3 text-left">Parameter</th>
+              <th className="px-5 py-3 text-right">Run A</th>
+              <th className="px-5 py-3 text-right">Run B</th>
+              <th className="px-5 py-3 text-right">Deviation</th>
             </tr>
           </thead>
           <tbody>
-            {param_diff.map((p: ParamDiff) => (
-              <tr key={p.parameter} className={`border-b border-border/50 ${p.significant ? 'bg-warning-dim/20' : ''}`}>
-                <td className="px-4 py-2 text-text-secondary">{formatParamName(p.parameter)}</td>
-                <td className="px-4 py-2 text-right font-mono text-text-primary">{formatValue(p.run_a)}</td>
-                <td className="px-4 py-2 text-right font-mono text-text-primary">{formatValue(p.run_b)}</td>
-                <td className="px-4 py-2 text-right">
+            {param_diff.map((p: ParamDiff, idx: number) => (
+              <tr key={p.parameter} className={`border-b border-border/50 hover:bg-white/[0.03] ${p.significant ? 'bg-warning-dim/20' : idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}>
+                <td className="px-5 py-3 text-text-secondary">{formatParamName(p.parameter)}</td>
+                <td className="px-5 py-3 text-right font-mono text-text-primary">{formatValue(p.run_a)}</td>
+                <td className="px-5 py-3 text-right font-mono text-text-primary">{formatValue(p.run_b)}</td>
+                <td className="px-5 py-3 text-right">
                   {p.deviation_pct !== null ? (
-                    <span className={`font-mono ${p.significant ? 'text-warning font-medium' : 'text-text-muted'}`}>
+                    <span className={`font-mono ${
+                      Math.abs(p.deviation_pct) > 50 ? 'text-red-400 font-semibold' :
+                      Math.abs(p.deviation_pct) > 20 ? 'text-amber-400' :
+                      'text-text-muted'
+                    }`}>
                       {p.deviation_pct}%
                     </span>
                   ) : <span className="text-text-muted">—</span>}
@@ -239,13 +243,13 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
 
       {/* Sensor overlay */}
       {sensorTags.length > 0 && (
-        <div className="bg-bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-text-secondary">Sensor Data Overlay</h3>
-            <div className="flex gap-1">
+        <div className="bg-bg-card border border-border/60 rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-text-secondary">Sensor Data Overlay</h3>
+            <div className="flex gap-1.5">
               {sensorTags.map(tag => (
                 <button key={tag} onClick={() => setActiveTag(tag)}
-                  className={`px-2 py-1 text-[10px] rounded transition-colors ${
+                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                     activeTag === tag ? 'bg-accent text-black' : 'bg-bg-input text-text-muted border border-border hover:text-text-primary'
                   }`}>
                   {tag.replace(/_/g, ' ')}
@@ -254,19 +258,19 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
             </div>
           </div>
           {sensorChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <LineChart data={sensorChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="minutes" tick={{ fontSize: 10 }} label={{ value: 'Minutes from start', position: 'insideBottom', offset: -5, style: { fontSize: 10, fill: '#9ca3af' } }} />
-                <YAxis tick={{ fontSize: 10 }} />
+                <XAxis dataKey="minutes" tick={{ fontSize: 12 }} label={{ value: 'Minutes from start', position: 'insideBottom', offset: -5, style: { fontSize: 12, fill: '#9ca3af' } }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip content={<ChartTooltip formatter={(v: number) => v?.toFixed(3)} />} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line type="monotone" dataKey={run_a.run_number} stroke="#f59e0b" dot={false} strokeWidth={1.5} name={`${run_a.run_number}`} />
                 <Line type="monotone" dataKey={run_b.run_number} stroke="#06b6d4" dot={false} strokeWidth={1.5} name={`${run_b.run_number}`} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[250px] flex items-center justify-center text-text-muted text-sm">No sensor data available</div>
+            <div className="h-[300px] flex items-center justify-center text-text-muted text-sm">No sensor data available</div>
           )}
         </div>
       )}
@@ -277,25 +281,25 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
 function RunHeader({ run, label, electrodes }: { run: Run; label: string; electrodes: Electrode[] }) {
   const defective = electrodes.filter((e: Electrode) => e.defect_code_ob || e.defect_code_og || e.defect_code_of);
   return (
-    <div className="bg-bg-card border border-border rounded-lg p-4">
+    <div className="bg-bg-card border border-border/60 rounded-xl shadow-sm p-5">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-wider text-text-muted">{label}</span>
+        <span className="text-xs uppercase tracking-wider text-text-muted">{label}</span>
         <DefectRateBadge rate={run.defect_rate} />
       </div>
       <div className="font-mono text-lg text-text-primary">{run.run_number}</div>
-      <div className="text-xs text-text-secondary mt-1">{run.furnace} &middot; {run.department}</div>
-      <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
+      <div className="text-sm text-text-secondary mt-1">{run.furnace} &middot; {run.department}</div>
+      <div className="grid grid-cols-3 gap-3 mt-4 text-sm">
         <div>
-          <div className="text-text-muted">Pieces</div>
-          <div className="font-mono text-text-primary">{run.total_pieces}</div>
+          <div className="text-xs text-text-muted">Pieces</div>
+          <div className="font-mono text-text-primary mt-0.5">{run.total_pieces}</div>
         </div>
         <div>
-          <div className="text-text-muted">Defects</div>
-          <div className="font-mono text-danger">{defective.length}</div>
+          <div className="text-xs text-text-muted">Defects</div>
+          <div className="font-mono text-danger mt-0.5">{defective.length}</div>
         </div>
         <div>
-          <div className="text-text-muted">kWh</div>
-          <div className="font-mono text-text-primary">{run.actual_kwh?.toLocaleString()}</div>
+          <div className="text-xs text-text-muted">kWh</div>
+          <div className="font-mono text-text-primary mt-0.5">{run.actual_kwh?.toLocaleString()}</div>
         </div>
       </div>
     </div>
@@ -323,20 +327,20 @@ function PositionMap({ electrodes, department, run, label }: { electrodes: Elect
   const cols = department === 'graphite' ? 7 : Math.min(10, Math.ceil(Math.sqrt(maxPos)));
 
   return (
-    <div className="bg-bg-card border border-border rounded-lg p-4">
-      <h3 className="text-xs font-medium text-text-secondary mb-2">
+    <div className="bg-bg-card border border-border/60 rounded-xl shadow-sm p-5">
+      <h3 className="text-sm font-medium text-text-secondary mb-3">
         {label} Position Map — {run.furnace}
       </h3>
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
         {Array.from({ length: maxPos }).map((_, i) => {
           const pos = i + 1;
           const elec = positions.find(p => p.pos === pos);
           if (!elec) {
-            return <div key={pos} className="aspect-square rounded bg-bg-input border border-border/50 flex items-center justify-center text-[9px] text-text-muted">{pos}</div>;
+            return <div key={pos} className="aspect-square rounded bg-bg-input border border-border/50 flex items-center justify-center text-xs text-text-muted">{pos}</div>;
           }
           return (
             <div key={pos}
-              className={`aspect-square rounded border flex flex-col items-center justify-center text-[9px] transition-colors ${
+              className={`aspect-square rounded border flex flex-col items-center justify-center text-xs transition-colors ${
                 elec.defect
                   ? 'bg-danger-dim border-danger/40 text-danger'
                   : 'bg-success-dim border-success/30 text-success'
@@ -344,15 +348,15 @@ function PositionMap({ electrodes, department, run, label }: { electrodes: Elect
               title={`Pos ${pos}: ${elec.gpn}\n${elec.defect ? `Defect: ${elec.defect_code}` : 'Clean'}\nLot: ${elec.lot}`}
             >
               <span className="font-bold">{pos}</span>
-              {elec.defect && <span className="text-[7px] mt-0.5">{elec.defect_code}</span>}
+              {elec.defect && <span className="text-[10px] mt-0.5">{elec.defect_code}</span>}
             </div>
           );
         })}
       </div>
-      <div className="flex items-center gap-3 mt-2 text-[10px] text-text-muted">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-success"></span> Clean</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-danger"></span> Defect</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-bg-input border border-border"></span> Empty</span>
+      <div className="flex items-center gap-4 mt-3 text-xs text-text-muted">
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-success"></span> Clean</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-danger"></span> Defect</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-bg-input border border-border"></span> Empty</span>
       </div>
     </div>
   );

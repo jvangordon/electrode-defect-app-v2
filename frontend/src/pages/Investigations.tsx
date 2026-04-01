@@ -34,7 +34,7 @@ export default function Investigations() {
   const openElectrode = (gpn: string) => { setSelectedGpn(gpn); setView('electrode'); };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-4">
+    <div className="p-8 max-w-[1600px] mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-text-primary">Investigation Workflow</h1>
         {view !== 'list' && (
@@ -129,49 +129,49 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
       )}
 
       {/* Investigation table */}
-      <div className="bg-bg-card border border-border rounded-lg overflow-hidden">
-        {invLoading ? <div className="p-4"><SkeletonTable rows={8} /></div> : (
-          <div className="max-h-[500px] overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-bg-card border-b border-border">
-                <tr className="text-text-muted uppercase tracking-wider">
-                  <th className="px-3 py-2 text-left">ID</th>
-                  <th className="px-3 py-2 text-left">GPN</th>
-                  <th className="px-3 py-2 text-left">Defect</th>
-                  <th className="px-3 py-2 text-left">Site</th>
-                  <th className="px-3 py-2 text-left">Root Cause</th>
-                  <th className="px-3 py-2 text-center">Status</th>
-                  <th className="px-3 py-2 text-left">Assigned</th>
-                  <th className="px-3 py-2 text-left">Due</th>
-                  <th className="px-3 py-2 text-right">Notes</th>
-                  <th className="px-3 py-2 text-right">Actions</th>
+      <div className="bg-bg-card border border-border/60 rounded-xl overflow-hidden">
+        {invLoading ? <div className="p-6"><SkeletonTable rows={8} /></div> : (
+          <div className="max-h-[540px] overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-bg-card border-b-2 border-border/80 shadow-sm">
+                <tr className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left">ID</th>
+                  <th className="px-4 py-3 text-left">GPN</th>
+                  <th className="px-4 py-3 text-left">Defect</th>
+                  <th className="px-4 py-3 text-left">Site</th>
+                  <th className="px-4 py-3 text-left">Root Cause</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-left">Assigned</th>
+                  <th className="px-4 py-3 text-left">Due</th>
+                  <th className="px-4 py-3 text-right">Notes</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {investigations.map((inv: Investigation) => {
+                {investigations.map((inv: Investigation, idx: number) => {
                   const isOverdue = inv.due_date && new Date(inv.due_date) < new Date() && !['closed', 'verified'].includes(inv.status);
                   return (
                     <tr key={inv.investigation_id} onClick={() => onOpenInvestigation(inv.investigation_id)}
-                      className={`border-b border-border/50 cursor-pointer transition-colors hover:bg-bg-card-hover ${
-                        isOverdue ? 'bg-danger-dim/20' : ''
+                      className={`border-b border-border/40 cursor-pointer transition-colors hover:bg-white/[0.03] ${
+                        isOverdue ? 'bg-danger-dim/20' : idx % 2 === 1 ? 'bg-white/[0.01]' : ''
                       }`}>
-                      <td className="px-3 py-2 font-mono text-text-primary">#{inv.investigation_id}</td>
-                      <td className="px-3 py-2 font-mono text-accent">{inv.gpn?.slice(0, 12)}</td>
-                      <td className="px-3 py-2 text-text-secondary">{inv.defect_code}</td>
-                      <td className="px-3 py-2 text-text-secondary">{inv.defect_site}</td>
-                      <td className="px-3 py-2 text-text-secondary">{inv.root_cause_category}</td>
-                      <td className="px-3 py-2 text-center"><StatusBadge status={inv.status} /></td>
-                      <td className="px-3 py-2 text-text-secondary">{inv.assigned_to}</td>
-                      <td className="px-3 py-2">
-                        <span className={`text-xs ${isOverdue ? 'text-danger font-medium' : 'text-text-muted'}`}>
+                      <td className="px-4 py-3 font-mono text-text-primary">#{inv.investigation_id}</td>
+                      <td className="px-4 py-3 font-mono text-accent">{inv.gpn?.slice(0, 14)}</td>
+                      <td className="px-4 py-3 text-text-secondary">{inv.defect_code}</td>
+                      <td className="px-4 py-3 text-text-secondary">{inv.defect_site}</td>
+                      <td className="px-4 py-3 text-text-secondary">{inv.root_cause_category}</td>
+                      <td className="px-4 py-3 text-center"><StatusBadge status={inv.status} /></td>
+                      <td className="px-4 py-3 text-text-secondary">{inv.assigned_to}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-sm ${isOverdue ? 'text-danger font-medium' : 'text-text-muted'}`}>
                           {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono">{inv.note_count}</td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-4 py-3 text-right font-mono">{inv.note_count}</td>
+                      <td className="px-4 py-3 text-right">
                         <span className="font-mono">{inv.action_count}</span>
                         {(inv.overdue_actions ?? 0) > 0 && (
-                          <span className="ml-1 text-danger text-[10px]">({inv.overdue_actions} overdue)</span>
+                          <span className="ml-1 text-danger text-xs">({inv.overdue_actions} overdue)</span>
                         )}
                       </td>
                     </tr>
@@ -222,9 +222,9 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
   const nextStatus = currentIdx < statusFlow.length - 1 ? statusFlow[currentIdx + 1] : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="bg-bg-card border border-border rounded-lg p-4">
+      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
             )}
             {nextStatus && (
               <button onClick={() => handleStatusChange(nextStatus)} disabled={updating}
-                className="px-3 py-1.5 text-xs bg-accent text-black rounded font-medium hover:bg-accent/90 disabled:opacity-50">
+                className="px-4 py-2 text-sm border border-text-muted/40 rounded-lg text-text-primary bg-transparent hover:bg-white/5 hover:border-accent/50 transition-colors font-medium disabled:opacity-50">
                 Move to {nextStatus.replace(/_/g, ' ')}
               </button>
             )}
@@ -252,20 +252,20 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
         </div>
 
         {/* Details grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4 text-xs">
-          <div className="bg-bg-input rounded p-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 text-xs">
+          <div className="bg-bg-input rounded-lg p-3">
             <div className="text-text-muted">GPN</div>
             <div className="font-mono text-text-primary mt-0.5">{inv.gpn}</div>
           </div>
-          <div className="bg-bg-input rounded p-2">
+          <div className="bg-bg-input rounded-lg p-3">
             <div className="text-text-muted">Root Cause</div>
             <div className="text-text-primary mt-0.5">{inv.root_cause_category}</div>
           </div>
-          <div className="bg-bg-input rounded p-2">
+          <div className="bg-bg-input rounded-lg p-3">
             <div className="text-text-muted">Created</div>
             <div className="text-text-primary mt-0.5">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}</div>
           </div>
-          <div className="bg-bg-input rounded p-2">
+          <div className="bg-bg-input rounded-lg p-3">
             <div className="text-text-muted">Due Date</div>
             <div className={`mt-0.5 ${inv.due_date && new Date(inv.due_date) < new Date() && !['closed','verified'].includes(inv.status) ? 'text-danger font-medium' : 'text-text-primary'}`}>
               {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
@@ -273,70 +273,75 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
           </div>
         </div>
         {inv.root_cause_detail && (
-          <div className="mt-3 text-xs text-text-secondary bg-bg-input rounded p-2">
+          <div className="mt-3 text-xs text-text-secondary bg-bg-input rounded-lg p-3">
             <span className="text-text-muted">Detail: </span>{inv.root_cause_detail}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Notes */}
-        <div className="bg-bg-card border border-border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-text-secondary flex items-center gap-1.5 mb-3">
-            <MessageSquare size={14} /> Notes ({notes.length})
+        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+          <h3 className="text-base font-semibold text-text-secondary flex items-center gap-2 mb-4">
+            <MessageSquare size={16} /> Notes ({notes.length})
           </h3>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto mb-3">
+          <div className="space-y-3 max-h-[300px] overflow-y-auto mb-4">
             {notes.map((n: Note) => (
-              <div key={n.note_id} className="bg-bg-input rounded p-2.5 text-xs">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-text-primary">{n.author}</span>
-                  <span className="text-text-muted">{new Date(n.created_at).toLocaleString()}</span>
+              <div key={n.note_id} className="bg-bg-input rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-text-primary">{n.author}</span>
+                  <span className="text-xs text-text-muted">{new Date(n.created_at).toLocaleString()}</span>
                 </div>
-                <p className="text-text-secondary">{n.note_text}</p>
+                <p className="text-sm text-text-secondary leading-relaxed">{n.note_text}</p>
               </div>
             ))}
-            {notes.length === 0 && <div className="text-text-muted text-xs text-center py-3">No notes yet</div>}
+            {notes.length === 0 && <div className="text-text-muted text-sm text-center py-6">No notes yet</div>}
           </div>
-          <div className="flex gap-2">
-            <input type="text" value={noteText} onChange={e => setNoteText(e.target.value)}
-              placeholder="Add a note..."
-              className="flex-1 bg-bg-input border border-border rounded px-3 py-1.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/50"
-              onKeyDown={e => e.key === 'Enter' && handleAddNote()} />
-            <button onClick={handleAddNote}
-              className="px-3 py-1.5 text-xs bg-accent text-black rounded font-medium hover:bg-accent/90">
-              Add
-            </button>
+          <div>
+            <label className="text-sm font-medium text-text-secondary mb-2 block">Add a note</label>
+            <textarea value={noteText} onChange={e => setNoteText(e.target.value)}
+              placeholder="Describe findings, observations, or next steps..."
+              rows={3}
+              className="w-full bg-bg-input border-2 border-border rounded-lg px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 resize-y"
+              onKeyDown={e => e.key === 'Enter' && e.metaKey && handleAddNote()} />
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-xs text-text-muted">⌘+Enter to submit</span>
+              <button onClick={handleAddNote}
+                className="px-5 py-2.5 text-sm bg-accent text-black rounded-lg font-semibold hover:bg-accent/90 transition-colors">
+                Add Note
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Corrective Actions */}
-        <div className="bg-bg-card border border-border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-text-secondary flex items-center gap-1.5 mb-3">
-            <CheckCircle2 size={14} /> Corrective Actions ({actions.length})
+        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+          <h3 className="text-base font-semibold text-text-secondary flex items-center gap-2 mb-4">
+            <CheckCircle2 size={16} /> Corrective Actions ({actions.length})
           </h3>
-          <div className="space-y-2 max-h-[350px] overflow-y-auto">
+          <div className="space-y-3 max-h-[350px] overflow-y-auto">
             {actions.map((a: CorrectiveAction) => {
               const isOverdue = a.due_date && new Date(a.due_date) < new Date() && !['completed', 'verified'].includes(a.status);
               const actionStatusFlow = ['open', 'in_progress', 'completed'];
               const nextActionStatus = actionStatusFlow[actionStatusFlow.indexOf(a.status) + 1];
 
               return (
-                <div key={a.action_id} className={`border rounded p-2.5 text-xs ${
-                  isOverdue ? 'border-danger/30 bg-danger-dim/20' : 'border-border'
+                <div key={a.action_id} className={`border rounded-lg p-4 ${
+                  isOverdue ? 'border-danger/30 bg-danger-dim/20' : 'border-border/60'
                 }`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-text-primary">{a.title}</span>
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-text-primary">{a.title}</span>
+                    <div className="flex items-center gap-2">
                       <StatusBadge status={a.priority || 'medium'} />
                       <StatusBadge status={a.status} />
                     </div>
                   </div>
-                  <div className="text-text-muted mb-1">{a.description}</div>
+                  <div className="text-sm text-text-muted mb-2">{a.description}</div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-text-muted">
+                    <div className="flex items-center gap-4 text-xs text-text-muted">
                       <span>{a.assigned_to}</span>
-                      <span className={`flex items-center gap-0.5 ${isOverdue ? 'text-danger' : ''}`}>
-                        <Clock size={10} />
+                      <span className={`flex items-center gap-1 ${isOverdue ? 'text-danger' : ''}`}>
+                        <Clock size={12} />
                         {a.due_date ? new Date(a.due_date).toLocaleDateString() : '—'}
                       </span>
                       {a.expected_savings && (
@@ -345,7 +350,7 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
                     </div>
                     {nextActionStatus && (
                       <button onClick={() => handleActionStatus(a.action_id, nextActionStatus)}
-                        className="px-2 py-0.5 text-[10px] bg-bg-input border border-border rounded hover:border-accent/50 text-text-secondary hover:text-accent">
+                        className="px-3 py-1.5 text-xs bg-bg-input border border-border rounded-lg hover:border-accent/50 text-text-secondary hover:text-accent transition-colors">
                         → {nextActionStatus.replace(/_/g, ' ')}
                       </button>
                     )}
@@ -421,9 +426,9 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
   const { electrode, bake_run, siblings, risk_factors, lifecycle, investigations } = data;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* Electrode header */}
-      <div className="bg-bg-card border border-border rounded-lg p-4">
+      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold font-mono text-text-primary">{electrode.gpn}</h2>
@@ -442,8 +447,8 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
       </div>
 
       {/* 10-step lifecycle timeline */}
-      <div className="bg-bg-card border border-border rounded-lg p-4">
-        <h3 className="text-sm font-medium text-text-secondary mb-4">Manufacturing Lifecycle</h3>
+      <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-text-secondary mb-4">Manufacturing Lifecycle</h3>
         <div className="overflow-x-auto">
           <div className="flex items-start gap-1 min-w-[900px]">
             {lifecycle.map((step: LifecycleStep, i: number) => {
@@ -456,16 +461,16 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
 
               return (
                 <div key={i} className="flex items-center flex-1 min-w-0">
-                  <div className={`flex-1 border rounded-md p-2 text-center ${bgColor}`}>
-                    <div className={`text-[10px] font-medium ${textColor} leading-tight`}>{step.step_name}</div>
+                  <div className={`flex-1 border rounded-md p-2 text-center min-h-[56px] flex flex-col items-center justify-center ${bgColor}`}>
+                    <div className={`text-xs font-medium ${textColor} leading-tight`}>{step.step_name}</div>
                     {step.run_number && (
-                      <div className="text-[9px] font-mono text-text-muted mt-0.5">{step.run_number}</div>
+                      <div className="text-[11px] font-mono text-text-muted mt-0.5">{step.run_number}</div>
                     )}
                     {step.furnace && (
-                      <div className="text-[9px] text-text-muted">{step.furnace}</div>
+                      <div className="text-[11px] text-text-muted">{step.furnace}</div>
                     )}
                     {step.defect_code && (
-                      <div className="text-[9px] font-mono text-danger mt-0.5">{step.defect_code}</div>
+                      <div className="text-[11px] font-mono text-danger mt-0.5">{step.defect_code}</div>
                     )}
                   </div>
                   {i < lifecycle.length - 1 && (
@@ -483,10 +488,10 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Risk Factors */}
-        <div className="bg-bg-card border border-border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">Risk Factor Attribution</h3>
+        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+          <h3 className="text-sm font-semibold text-text-secondary mb-3">Risk Factor Attribution</h3>
           <div className="space-y-2 text-xs">
             {[
               { name: 'Furnace', value: electrode.furnace_og || bake_run?.furnace, level: bake_run?.furnace },
@@ -514,8 +519,8 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
         </div>
 
         {/* Risk Factors right side is blank — AI Analysis goes here in a full-width section below */}
-        <div className="bg-bg-card border border-border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">
+        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+          <h3 className="text-sm font-semibold text-text-secondary mb-3">
             Sibling Electrodes (same graphite run: {electrode.run_number_og})
           </h3>
           <div className="max-h-[250px] overflow-y-auto">
@@ -561,8 +566,8 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
 
       {/* Existing investigations for this GPN */}
       {investigations.length > 0 && (
-        <div className="bg-bg-card border border-border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-text-secondary mb-3">Existing Investigations</h3>
+        <div className="bg-[#1a1d2b] border border-[#2a2d3a]/60 rounded-xl p-6">
+          <h3 className="text-sm font-semibold text-text-secondary mb-3">Existing Investigations</h3>
           <div className="space-y-1">
             {investigations.map((inv: Investigation) => (
               <div key={inv.investigation_id} onClick={() => onOpenInvestigation(inv.investigation_id)}
@@ -629,7 +634,7 @@ function AiAnalysisSection({ data, loading }: { data: AiAnalysisResponse | null;
           {/* Confidence */}
           <div className="flex items-center gap-2 text-xs">
             <span className="text-text-muted">Confidence:</span>
-            <div className="flex-1 max-w-[120px] bg-bg-input rounded-full h-1.5">
+            <div className="flex-1 max-w-[120px] bg-bg-input rounded-full h-3">
               <div
                 className="h-full rounded-full bg-amber-400"
                 style={{ width: `${(data.confidence * 100)}%` }}
@@ -639,7 +644,7 @@ function AiAnalysisSection({ data, loading }: { data: AiAnalysisResponse | null;
           </div>
 
           {/* Analysis text */}
-          <div className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
+          <div className="text-xs text-text-secondary whitespace-pre-line" style={{ lineHeight: 1.6 }}>
             {data.analysis}
           </div>
 
@@ -664,7 +669,7 @@ function AiAnalysisSection({ data, loading }: { data: AiAnalysisResponse | null;
           )}
 
           {/* Recommendation */}
-          <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2.5 text-xs">
+          <div className="bg-amber-500/[0.08] border-l-[3px] border-l-amber-500 rounded-r-md p-3 text-xs">
             <div className="text-[10px] text-amber-400 uppercase tracking-wider mb-1">Recommendation</div>
             <div className="text-text-primary">{data.recommendation}</div>
           </div>

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @theme {
   --color-bg-primary: #0d0f14;
@@ -18,8 +17,8 @@
   --color-success-dim: rgba(16, 185, 129, 0.15);
   --color-warning: #f59e0b;
   --color-warning-dim: rgba(245, 158, 11, 0.15);
-  --color-danger: #ef4444;
-  --color-danger-dim: rgba(239, 68, 68, 0.15);
+  --color-danger: #FF3621;
+  --color-danger-dim: rgba(255, 54, 33, 0.15);
   --color-info: #06b6d4;
   --color-info-dim: rgba(6, 182, 212, 0.15);
 
@@ -79,7 +78,7 @@ body {
 }
 .recharts-text {
   fill: var(--color-text-secondary) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 .recharts-tooltip-wrapper {
   outline: none !important;
