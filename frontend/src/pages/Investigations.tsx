@@ -3,7 +3,13 @@ import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { SkeletonTable, SkeletonCard } from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
-import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight } from 'lucide-react';
+import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight, Sparkles } from 'lucide-react';
+import type {
+  InvestigationsResponse, Investigation, InvestigationDetail as InvDetailType,
+  Note, CorrectiveAction, ElectrodeDetailResponse, LifecycleStep,
+  Sibling, RiskFactor, ElectrodeSearchResult,
+  AiAnalysisResponse, AiAnalysisFactor, SimilarCasesResponse, SimilarCase,
+} from '../types';
 
 type View = 'list' | 'detail' | 'electrode';
 
@@ -60,7 +66,17 @@ export default function Investigations() {
   );
 }
 
-function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter, searchQuery, setSearchQuery, searchResults, onOpenInvestigation, onOpenElectrode }: any) {
+function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter, searchQuery, setSearchQuery, searchResults, onOpenInvestigation, onOpenElectrode }: {
+  invData: InvestigationsResponse | null;
+  invLoading: boolean;
+  statusFilter: string;
+  setStatusFilter: (s: string) => void;
+  searchQuery: string;
+  setSearchQuery: (s: string) => void;
+  searchResults: ElectrodeSearchResult[];
+  onOpenInvestigation: (id: number) => void;
+  onOpenElectrode: (gpn: string) => void;
+}) {
   const investigations = invData?.investigations || [];
 
   return (
@@ -90,7 +106,7 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
         <div className="bg-bg-card border border-border rounded-lg p-3">
           <h3 className="text-xs font-medium text-text-muted mb-2">Search Results ({searchResults.length})</h3>
           <div className="space-y-1 max-h-[200px] overflow-y-auto">
-            {searchResults.map((e: any) => (
+            {searchResults.map((e: ElectrodeSearchResult) => (
               <div key={e.gpn} onClick={() => onOpenElectrode(e.gpn)}
                 className="flex items-center justify-between px-2 py-1.5 rounded cursor-pointer hover:bg-bg-card-hover transition-colors">
                 <div className="flex items-center gap-3">
@@ -132,7 +148,7 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
                 </tr>
               </thead>
               <tbody>
-                {investigations.map((inv: any) => {
+                {investigations.map((inv: Investigation) => {
                   const isOverdue = inv.due_date && new Date(inv.due_date) < new Date() && !['closed', 'verified'].includes(inv.status);
                   return (
                     <tr key={inv.investigation_id} onClick={() => onOpenInvestigation(inv.investigation_id)}
@@ -154,7 +170,7 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
                       <td className="px-3 py-2 text-right font-mono">{inv.note_count}</td>
                       <td className="px-3 py-2 text-right">
                         <span className="font-mono">{inv.action_count}</span>
-                        {inv.overdue_actions > 0 && (
+                        {(inv.overdue_actions ?? 0) > 0 && (
                           <span className="ml-1 text-danger text-[10px]">({inv.overdue_actions} overdue)</span>
                         )}
                       </td>
@@ -172,6 +188,7 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
 
 function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number; onOpenElectrode: (gpn: string) => void; refetchList: () => void }) {
   const { data, loading, refetch } = useApi(() => api.getInvestigation(id), [id]);
+  const { data: similarData, loading: similarLoading } = useApi(() => api.getSimilarCases(id), [id]);
   const [noteText, setNoteText] = useState('');
   const [updating, setUpdating] = useState(false);
 
@@ -269,7 +286,7 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
             <MessageSquare size={14} /> Notes ({notes.length})
           </h3>
           <div className="space-y-2 max-h-[300px] overflow-y-auto mb-3">
-            {notes.map((n: any) => (
+            {notes.map((n: Note) => (
               <div key={n.note_id} className="bg-bg-input rounded p-2.5 text-xs">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-medium text-text-primary">{n.author}</span>
@@ -298,7 +315,7 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
             <CheckCircle2 size={14} /> Corrective Actions ({actions.length})
           </h3>
           <div className="space-y-2 max-h-[350px] overflow-y-auto">
-            {actions.map((a: any) => {
+            {actions.map((a: CorrectiveAction) => {
               const isOverdue = a.due_date && new Date(a.due_date) < new Date() && !['completed', 'verified'].includes(a.status);
               const actionStatusFlow = ['open', 'in_progress', 'completed'];
               const nextActionStatus = actionStatusFlow[actionStatusFlow.indexOf(a.status) + 1];
@@ -339,12 +356,64 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
           </div>
         </div>
       </div>
+
+      {/* Similar Cases (AI Feature B) */}
+      <AiGradientSection title="Similar Past Investigations" label="AI-Suggested" loading={similarLoading}>
+        {similarData && similarData.similar_cases.length > 0 ? (
+          <div className="space-y-3">
+            {similarData.similar_cases.map((sc: SimilarCase) => (
+              <div key={sc.investigation.investigation_id} className="bg-bg-input rounded-lg p-3 text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-text-primary font-medium">#{sc.investigation.investigation_id}</span>
+                    <span className="text-text-secondary">{sc.investigation.defect_code}</span>
+                    <StatusBadge status={sc.investigation.status} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-text-muted">Score: {sc.match_score}/3</span>
+                  </div>
+                </div>
+                <div className="text-text-muted mb-1">{sc.match_explanation}</div>
+                {sc.investigation.root_cause_category && (
+                  <div className="text-text-secondary">
+                    Root cause: {sc.investigation.root_cause_category}
+                    {sc.investigation.root_cause_detail && ` — ${sc.investigation.root_cause_detail}`}
+                  </div>
+                )}
+                {sc.investigation.corrective_action && (
+                  <div className="text-text-secondary mt-1">
+                    Action taken: {sc.investigation.corrective_action}
+                  </div>
+                )}
+                {sc.effective_action && (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="px-1.5 py-0.5 text-[10px] rounded bg-success-dim text-success font-medium">Recommended Action</span>
+                    <span className="text-success text-[11px]">{sc.effective_action}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="text-[10px] text-text-muted italic pt-1">
+              Similarity based on historical data patterns. Verify applicability.
+            </div>
+          </div>
+        ) : !similarLoading ? (
+          <div className="text-xs text-text-muted text-center py-4">No similar investigations found with 2+ matching attributes.</div>
+        ) : null}
+      </AiGradientSection>
     </div>
   );
 }
 
 function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInvestigation: (id: number) => void }) {
   const { data, loading } = useApi(() => api.getElectrode(gpn), [gpn]);
+
+  // Find investigation ID for this electrode to fetch AI analysis
+  const investigationId = data?.investigations?.[0]?.investigation_id ?? null;
+  const { data: aiData, loading: aiLoading } = useApi(
+    () => investigationId ? api.getAiAnalysis(investigationId) : Promise.resolve(null),
+    [investigationId],
+  );
 
   if (loading) return <div className="space-y-4"><SkeletonCard height="h-24" /><SkeletonCard height="h-16" /><SkeletonCard height="h-48" /></div>;
   if (!data?.electrode) return <div className="text-text-muted">Electrode not found</div>;
@@ -377,7 +446,7 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
         <h3 className="text-sm font-medium text-text-secondary mb-4">Manufacturing Lifecycle</h3>
         <div className="overflow-x-auto">
           <div className="flex items-start gap-1 min-w-[900px]">
-            {lifecycle.map((step: any, i: number) => {
+            {lifecycle.map((step: LifecycleStep, i: number) => {
               const isDefect = step.status === 'defect';
               const isClean = step.status === 'clean';
               const bgColor = isDefect ? 'bg-danger-dim border-danger/40' :
@@ -426,8 +495,8 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
               { name: 'Blend', value: electrode.coke_blend },
               { name: 'Diameter', value: electrode.diameter ? `${electrode.diameter}mm` : null },
             ].filter(f => f.value).map(f => {
-              const matchedFactor = risk_factors.find((rf: any) =>
-                rf.factor_level?.includes(f.value?.toString()?.slice(0, 3))
+              const matchedFactor = risk_factors.find((rf: RiskFactor) =>
+                rf.factor_level?.includes(f.value?.toString()?.slice(0, 3) ?? '')
               );
               const riskGroup = matchedFactor?.risk_group || 'low';
 
@@ -444,7 +513,7 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
           </div>
         </div>
 
-        {/* Sibling Analysis */}
+        {/* Risk Factors right side is blank — AI Analysis goes here in a full-width section below */}
         <div className="bg-bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-medium text-text-secondary mb-3">
             Sibling Electrodes (same graphite run: {electrode.run_number_og})
@@ -460,7 +529,7 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
                 </tr>
               </thead>
               <tbody>
-                {siblings.map((s: any) => (
+                {siblings.map((s: Sibling) => (
                   <tr key={s.gpn} className="border-b border-border/30 hover:bg-bg-card-hover">
                     <td className="px-2 py-1 font-mono">{s.position_og}</td>
                     <td className="px-2 py-1 font-mono text-text-secondary">{s.gpn?.slice(0, 12)}</td>
@@ -479,18 +548,23 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
           </div>
           {siblings.length > 0 && (
             <div className="mt-2 text-[10px] text-text-muted">
-              {siblings.filter((s: any) => s.defect_code_og || s.defect_code_of).length} of {siblings.length} siblings also defective
+              {siblings.filter((s: Sibling) => s.defect_code_og || s.defect_code_of).length} of {siblings.length} siblings also defective
             </div>
           )}
         </div>
       </div>
+
+      {/* AI Analysis (Mock GenAI Feature A) — AFTER lifecycle/risk, BEFORE sibling analysis */}
+      {investigationId && (
+        <AiAnalysisSection data={aiData} loading={aiLoading} />
+      )}
 
       {/* Existing investigations for this GPN */}
       {investigations.length > 0 && (
         <div className="bg-bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-medium text-text-secondary mb-3">Existing Investigations</h3>
           <div className="space-y-1">
-            {investigations.map((inv: any) => (
+            {investigations.map((inv: Investigation) => (
               <div key={inv.investigation_id} onClick={() => onOpenInvestigation(inv.investigation_id)}
                 className="flex items-center justify-between p-2.5 rounded cursor-pointer hover:bg-bg-card-hover border border-border/50">
                 <div className="flex items-center gap-3 text-xs">
@@ -507,5 +581,102 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
         </div>
       )}
     </div>
+  );
+}
+
+/* ==================== AI UI Components ==================== */
+
+function AiGradientSection({ title, label, loading, children }: {
+  title: string;
+  label: string;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div className="rounded-lg p-[1px] bg-gradient-to-r from-amber-500/30 via-orange-500/20 to-amber-500/30">
+      <div className="bg-bg-card rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <h3 className="text-sm font-medium text-text-secondary flex items-center gap-1.5">
+            <Sparkles size={14} className="text-amber-400" />
+            {title}
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium ml-1">{label}</span>
+          </h3>
+          <button className="text-xs text-text-muted hover:text-text-primary">
+            {expanded ? '▾' : '▸'}
+          </button>
+        </div>
+        {expanded && (
+          loading ? (
+            <div className="space-y-2">
+              <div className="skeleton h-4 w-3/4 rounded" />
+              <div className="skeleton h-4 w-full rounded" />
+              <div className="skeleton h-4 w-5/6 rounded" />
+            </div>
+          ) : children
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AiAnalysisSection({ data, loading }: { data: AiAnalysisResponse | null; loading: boolean }) {
+  return (
+    <AiGradientSection title="AI Analysis" label="AI-Generated" loading={loading}>
+      {data ? (
+        <div className="space-y-3">
+          {/* Confidence */}
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-text-muted">Confidence:</span>
+            <div className="flex-1 max-w-[120px] bg-bg-input rounded-full h-1.5">
+              <div
+                className="h-full rounded-full bg-amber-400"
+                style={{ width: `${(data.confidence * 100)}%` }}
+              />
+            </div>
+            <span className="font-mono text-text-primary">{(data.confidence * 100).toFixed(0)}%</span>
+          </div>
+
+          {/* Analysis text */}
+          <div className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
+            {data.analysis}
+          </div>
+
+          {/* Factors */}
+          {data.factors.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] text-text-muted uppercase tracking-wider">Contributing Factors</div>
+              {data.factors.map((f: AiAnalysisFactor, i: number) => (
+                <div key={i} className="flex items-start gap-2 text-xs bg-bg-input rounded p-2">
+                  <span className={`px-1.5 py-0.5 text-[10px] rounded font-medium shrink-0 ${
+                    f.impact === 'high' ? 'bg-danger-dim text-danger' :
+                    f.impact === 'medium' ? 'bg-warning-dim text-warning' :
+                    'bg-success-dim text-success'
+                  }`}>{f.impact}</span>
+                  <div>
+                    <div className="font-medium text-text-primary">{f.name}</div>
+                    <div className="text-text-muted mt-0.5">{f.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Recommendation */}
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded p-2.5 text-xs">
+            <div className="text-[10px] text-amber-400 uppercase tracking-wider mb-1">Recommendation</div>
+            <div className="text-text-primary">{data.recommendation}</div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="text-[10px] text-text-muted italic pt-1">
+            Generated from historical data patterns. Verify with process engineering.
+          </div>
+        </div>
+      ) : (
+        <div className="text-xs text-text-muted text-center py-4">No analysis available for this electrode.</div>
+      )}
+    </AiGradientSection>
   );
 }

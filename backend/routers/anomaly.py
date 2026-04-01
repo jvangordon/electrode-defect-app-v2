@@ -149,18 +149,28 @@ def graphite_risk_assessments(limit: int = Query(50, le=200)):
         """, (limit,))
         runs = [dict(r) for r in cur.fetchall()]
 
-        # For each run, get composition details
-        for run in runs:
+        # Batch-fetch all electrodes for these runs in a single query
+        run_numbers = [r["run_number"] for r in runs]
+        electrodes_by_run: dict[str, list] = {rn: [] for rn in run_numbers}
+        if run_numbers:
             cur.execute("""
                 SELECT e.gpn, e.lot, e.position_og, e.diameter, e.coke_blend,
                        e.defect_code_og, e.defect_code_of,
-                       l.lot_defect_rate, l.risk_tier
+                       l.lot_defect_rate, l.risk_tier,
+                       e.run_number_og
                 FROM electrodes e
                 LEFT JOIN lots l ON e.lot = l.lot_id
-                WHERE e.run_number_og = %s
-                ORDER BY e.position_og
-            """, (run["run_number"],))
-            electrodes = [dict(e) for e in cur.fetchall()]
+                WHERE e.run_number_og IN %s
+                ORDER BY e.run_number_og, e.position_og
+            """, (tuple(run_numbers),))
+            for row in cur.fetchall():
+                e = dict(row)
+                rn = e.pop("run_number_og")
+                if rn in electrodes_by_run:
+                    electrodes_by_run[rn].append(e)
+
+        for run in runs:
+            electrodes = electrodes_by_run.get(run["run_number"], [])
 
             high_risk_lots = sum(1 for e in electrodes if e.get("risk_tier") == "high")
             edge_positions = sum(1 for e in electrodes if e.get("position_og") in (1, 2, 13, 14))

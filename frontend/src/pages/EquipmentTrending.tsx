@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine, Legend,
 } from 'recharts';
+import type { EquipmentItem, EquipmentTrendsResponse, EquipmentComparisonItem, MonthlyEquipmentData, TrendPoint } from '../types';
 
 export default function EquipmentTrending() {
   const [department, setDepartment] = useState<string>('');
@@ -53,7 +54,7 @@ export default function EquipmentTrending() {
           </div>
           {equipLoading ? <div className="p-3 space-y-2">{Array.from({length: 8}).map((_, i) => <SkeletonCard key={i} height="h-12" />)}</div> : (
             <div className="max-h-[600px] overflow-y-auto">
-              {equipment.map((e: any) => {
+              {equipment.map((e: EquipmentItem) => {
                 const TrendIcon = e.trend_direction === 'degrading' ? TrendingUp :
                   e.trend_direction === 'improving' ? TrendingDown : Minus;
                 const trendColor = e.trend_direction === 'degrading' ? 'text-danger' :
@@ -112,7 +113,7 @@ export default function EquipmentTrending() {
                   <ReferenceLine x={0.02} stroke="#10b981" strokeDasharray="3 3" label={{ value: '2%', position: 'top', fill: '#10b981', fontSize: 9 }} />
                   <ReferenceLine x={0.05} stroke="#f59e0b" strokeDasharray="3 3" label={{ value: '5%', position: 'top', fill: '#f59e0b', fontSize: 9 }} />
                   <Bar dataKey="defect_rate" name="Defect Rate" radius={[0, 3, 3, 0]}>
-                    {compData.current.map((d: any, i: number) => (
+                    {compData.current.map((d: EquipmentComparisonItem, i: number) => (
                       <Cell key={i} fill={d.defect_rate > 0.05 ? '#ef4444' : d.defect_rate > 0.03 ? '#f59e0b' : '#06b6d4'} />
                     ))}
                   </Bar>
@@ -126,10 +127,10 @@ export default function EquipmentTrending() {
   );
 }
 
-function TrendCharts({ data }: { data: any }) {
+function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
   const { furnace, department, monthly, trend_line, slope, r_squared } = data;
 
-  const chartData = monthly.map((m: any) => ({
+  const chartData = monthly.map((m: MonthlyEquipmentData) => ({
     month: new Date(m.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
     defect_rate: m.defect_rate * 100,
     avg_kwh: m.avg_kwh,
@@ -139,12 +140,12 @@ function TrendCharts({ data }: { data: any }) {
     run_count: m.run_count,
   }));
 
-  const trendLineData = trend_line.map((t: any) => ({
+  const trendLineData = trend_line.map((t: TrendPoint) => ({
     month: new Date(t.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
     trend: t.value * 100,
   }));
 
-  const mergedData = chartData.map((d: any, i: number) => ({
+  const mergedData = chartData.map((d, i: number) => ({
     ...d,
     trend: trendLineData[i]?.trend ?? null,
   }));
@@ -194,7 +195,7 @@ function TrendCharts({ data }: { data: any }) {
   );
 }
 
-function MetricChart({ data, dataKey, name, color }: { data: any[]; dataKey: string; name: string; color: string }) {
+function MetricChart({ data, dataKey, name, color }: { data: Record<string, unknown>[]; dataKey: string; name: string; color: string }) {
   return (
     <div className="bg-bg-card border border-border rounded-lg p-4">
       <h3 className="text-xs font-medium text-text-secondary mb-2">{name}</h3>

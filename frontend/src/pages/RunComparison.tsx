@@ -8,6 +8,7 @@ import { GitCompareArrows } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import type { Run, Electrode, ComparisonResult, ParamDiff, SensorReading } from '../types';
 
 export default function RunComparison() {
   const [department, setDepartment] = useState<'bake' | 'graphite'>('bake');
@@ -29,7 +30,7 @@ export default function RunComparison() {
 
   const runs = runData?.runs || [];
   const furnaces = useMemo(() => {
-    const set = new Set<string>(runs.map((r: any) => r.furnace));
+    const set = new Set<string>(runs.map((r: Run) => r.furnace));
     return [...set].sort();
   }, [runs]);
 
@@ -102,7 +103,7 @@ export default function RunComparison() {
                     </tr>
                   </thead>
                   <tbody>
-                    {runs.map((r: any) => {
+                    {runs.map((r: Run) => {
                       const isSelected = selectedRuns.includes(r.run_number);
                       const rowColor = r.defect_rate > 0.1 ? 'bg-danger-dim/30' :
                         r.defect_rate > 0.06 ? 'bg-warning-dim/30' : '';
@@ -150,7 +151,7 @@ export default function RunComparison() {
         </>
       ) : compLoading ? (
         <ComparisonSkeleton />
-      ) : compData && !compData.error ? (
+      ) : compData ? (
         <ComparisonView data={compData} department={department} onBack={() => setComparing(false)} />
       ) : (
         <div className="text-center py-8 text-text-muted">Failed to load comparison</div>
@@ -159,14 +160,14 @@ export default function RunComparison() {
   );
 }
 
-function ComparisonView({ data, department, onBack }: { data: any; department: string; onBack: () => void }) {
+function ComparisonView({ data, department, onBack }: { data: ComparisonResult; department: string; onBack: () => void }) {
   const { run_a, run_b, electrodes_a, electrodes_b, param_diff, sensors_a, sensors_b } = data;
 
   // Group sensors by tag
   const sensorTags = useMemo(() => {
     const tags = new Set<string>();
-    sensors_a.forEach((s: any) => tags.add(s.tag_name));
-    sensors_b.forEach((s: any) => tags.add(s.tag_name));
+    sensors_a.forEach((s: SensorReading) => tags.add(s.tag_name));
+    sensors_b.forEach((s: SensorReading) => tags.add(s.tag_name));
     return Array.from(tags).slice(0, 4); // show max 4
   }, [sensors_a, sensors_b]);
 
@@ -174,8 +175,8 @@ function ComparisonView({ data, department, onBack }: { data: any; department: s
 
   const sensorChartData = useMemo(() => {
     if (!activeTag) return [];
-    const aData = sensors_a.filter((s: any) => s.tag_name === activeTag);
-    const bData = sensors_b.filter((s: any) => s.tag_name === activeTag);
+    const aData = sensors_a.filter((s: SensorReading) => s.tag_name === activeTag);
+    const bData = sensors_b.filter((s: SensorReading) => s.tag_name === activeTag);
     const maxLen = Math.max(aData.length, bData.length);
     return Array.from({ length: maxLen }).map((_, i) => ({
       idx: i,
@@ -212,7 +213,7 @@ function ComparisonView({ data, department, onBack }: { data: any; department: s
             </tr>
           </thead>
           <tbody>
-            {param_diff.map((p: any) => (
+            {param_diff.map((p: ParamDiff) => (
               <tr key={p.parameter} className={`border-b border-border/50 ${p.significant ? 'bg-warning-dim/20' : ''}`}>
                 <td className="px-4 py-2 text-text-secondary">{formatParamName(p.parameter)}</td>
                 <td className="px-4 py-2 text-right font-mono text-text-primary">{formatValue(p.run_a)}</td>
@@ -273,8 +274,8 @@ function ComparisonView({ data, department, onBack }: { data: any; department: s
   );
 }
 
-function RunHeader({ run, label, electrodes }: { run: any; label: string; electrodes: any[] }) {
-  const defective = electrodes.filter((e: any) => e.defect_code_ob || e.defect_code_og || e.defect_code_of);
+function RunHeader({ run, label, electrodes }: { run: Run; label: string; electrodes: Electrode[] }) {
+  const defective = electrodes.filter((e: Electrode) => e.defect_code_ob || e.defect_code_og || e.defect_code_of);
   return (
     <div className="bg-bg-card border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-2">
@@ -301,18 +302,16 @@ function RunHeader({ run, label, electrodes }: { run: any; label: string; electr
   );
 }
 
-function PositionMap({ electrodes, department, run, label }: { electrodes: any[]; department: string; run: any; label: string }) {
-  // For graphite: positions 1-14 in a grid
-  // For bake: load_order as positions
+function PositionMap({ electrodes, department, run, label }: { electrodes: Electrode[]; department: string; run: Run; label: string }) {
   const positions = department === 'graphite'
-    ? electrodes.map((e: any) => ({
+    ? electrodes.map((e: Electrode) => ({
         pos: e.position_og || 0,
         gpn: e.gpn,
         defect: !!(e.defect_code_og || e.defect_code_of),
         defect_code: e.defect_code_og || e.defect_code_of || null,
         lot: e.lot,
       }))
-    : electrodes.map((e: any) => ({
+    : electrodes.map((e: Electrode) => ({
         pos: e.load_order_ob || 0,
         gpn: e.gpn,
         defect: !!e.defect_code_ob,
@@ -363,7 +362,7 @@ function formatParamName(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function formatValue(val: any): string {
+function formatValue(val: string | number | null): string {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'number') return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
   return String(val);

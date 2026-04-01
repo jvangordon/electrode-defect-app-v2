@@ -9,6 +9,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, ScatterChart, Scatter, Cell,
 } from 'recharts';
+import type { BakeAnomaly, Deviation, GraphiteAssessment, Quintile, CompositionElectrode } from '../types';
 
 export default function AnomalyDetection() {
   const [tab, setTab] = useState<'bake' | 'graphite'>('bake');
@@ -41,10 +42,10 @@ function BakeAnomalies() {
   if (!data) return null;
 
   const { anomalies, population_stats, spc_data } = data;
-  const flagged = anomalies.filter((a: any) => a.is_anomaly);
+  const flagged = anomalies.filter((a: BakeAnomaly) => a.is_anomaly);
 
   // SPC chart data for car_deck
-  const spcChartData = spc_data.map((d: any, i: number) => ({
+  const spcChartData = spc_data.map((d, i: number) => ({
     idx: i,
     date: d.start_time ? new Date(d.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
     car_deck: d.car_deck,
@@ -89,7 +90,7 @@ function BakeAnomalies() {
             <ReferenceLine y={meanDeck + 2 * stdDeck} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'UCL', position: 'right', fill: '#ef4444', fontSize: 10 }} />
             <ReferenceLine y={Math.max(0, meanDeck - 2 * stdDeck)} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'LCL', position: 'right', fill: '#10b981', fontSize: 10 }} />
             <Scatter data={spcChartData} fill="#f59e0b">
-              {spcChartData.map((d: any, i: number) => (
+              {spcChartData.map((d, i: number) => (
                 <Cell key={i} fill={d.car_deck > meanDeck + 2 * stdDeck ? '#ef4444' : d.car_deck > meanDeck + stdDeck ? '#f59e0b' : '#06b6d4'} />
               ))}
             </Scatter>
@@ -132,7 +133,7 @@ function BakeAnomalies() {
               </tr>
             </thead>
             <tbody>
-              {flagged.map((a: any) => (
+              {flagged.map((a: BakeAnomaly) => (
                 <tr key={a.run_number} className="border-b border-border/50 hover:bg-bg-card-hover">
                   <td className="px-3 py-2 font-mono text-text-primary">{a.run_number}</td>
                   <td className="px-3 py-2 text-text-secondary">{a.furnace}</td>
@@ -141,7 +142,7 @@ function BakeAnomalies() {
                   <td className="px-3 py-2 text-right"><DefectRateBadge rate={a.defect_rate} /></td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1">
-                      {a.deviations.map((d: any, i: number) => (
+                      {a.deviations.map((d: Deviation, i: number) => (
                         <span key={i} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-bg-input text-text-secondary">
                           {d.parameter.replace(/_/g, ' ')}: <span className="font-mono text-warning">{d.z_score}σ</span> {d.direction}
                         </span>
@@ -168,16 +169,16 @@ function GraphiteRisk() {
   const { assessments, quintiles } = data;
 
   // Quintile distribution
-  const quintileCounts = quintiles.map((q: any) => ({
+  const quintileCounts = quintiles.map((q: Quintile) => ({
     ...q,
-    count: assessments.filter((a: any) => a.risk_score === q.quintile).length,
+    count: assessments.filter((a: GraphiteAssessment) => a.risk_score === q.quintile).length,
   }));
 
   const QUINTILE_COLORS: Record<string, string> = {
     Q1: '#10b981', Q2: '#6ee7b7', Q3: '#f59e0b', Q4: '#f97316', Q5: '#ef4444',
   };
 
-  const selected = selectedRun ? assessments.find((a: any) => a.run_number === selectedRun) : null;
+  const selected = selectedRun ? assessments.find((a: GraphiteAssessment) => a.run_number === selectedRun) : null;
 
   return (
     <div className="space-y-4">
@@ -185,7 +186,7 @@ function GraphiteRisk() {
       <div className="bg-bg-card border border-border rounded-lg p-4">
         <h3 className="text-sm font-medium text-text-secondary mb-3">Composition Risk Quintiles</h3>
         <div className="grid grid-cols-5 gap-2">
-          {quintileCounts.map((q: any) => (
+          {quintileCounts.map((q) => (
             <div key={q.quintile}
               className="p-3 rounded-lg border text-center"
               style={{ borderColor: QUINTILE_COLORS[q.quintile] + '40', background: QUINTILE_COLORS[q.quintile] + '10' }}>
@@ -218,7 +219,7 @@ function GraphiteRisk() {
                 </tr>
               </thead>
               <tbody>
-                {assessments.map((a: any) => (
+                {assessments.map((a: GraphiteAssessment) => (
                   <tr key={a.run_number} onClick={() => setSelectedRun(a.run_number)}
                     className={`border-b border-border/50 cursor-pointer transition-colors hover:bg-bg-card-hover ${
                       selectedRun === a.run_number ? 'bg-accent-glow' : ''
@@ -269,7 +270,7 @@ function GraphiteRisk() {
                   <span className="w-16 text-right">Lot Risk</span>
                   <span className="w-20 text-center">Defect</span>
                 </div>
-                {selected.composition?.electrodes?.map((e: any) => (
+                {selected.composition?.electrodes?.map((e: CompositionElectrode) => (
                   <div key={e.gpn} className={`flex items-center px-2 py-1 rounded ${
                     e.defect_code_og || e.defect_code_of ? 'bg-danger-dim/30' : ''
                   }`}>

@@ -16,4 +16,9 @@ export default defineConfig({
     outDir: '../static',
     emptyOutDir: true,
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test-setup.ts',
+  },
 })

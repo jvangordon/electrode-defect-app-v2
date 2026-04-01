@@ -8,6 +8,7 @@ import { AlertTriangle, TrendingUp, ArrowUpRight } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import type { DashboardOverview, FurnaceStatus, RecentAnomaly, AttentionEquipment } from '../types';
 
 export default function Dashboard() {
   const { data, loading, error } = useApi(() => api.getDashboard(), []);
@@ -52,7 +53,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-medium text-text-secondary mb-3">Defect Rate Trend (6 months)</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={monthly_trend.map((m: any) => ({
+            <AreaChart data={monthly_trend.map(m => ({
               ...m,
               month: new Date(m.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
               rate: (m.defect_rate * 100),
@@ -92,8 +93,8 @@ export default function Dashboard() {
         <div className="bg-bg-card border border-border rounded-lg p-4">
           <h3 className="text-sm font-medium text-text-secondary mb-3">Furnace Status (last 5 runs each)</h3>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {furnace_status.map((f: any) => {
-              const status = f.trend_slope > 0.002 ? 'degrading' :
+            {furnace_status.map((f: FurnaceStatus) => {
+              const status = (f.trend_slope ?? 0) > 0.002 ? 'degrading' :
                 f.avg_defect_rate > 0.08 ? 'high' :
                 f.avg_defect_rate > 0.04 ? 'medium' : 'low';
               return (
@@ -132,7 +133,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-1 max-h-[280px] overflow-y-auto">
-            {recent_anomalies.map((a: any) => (
+            {recent_anomalies.map((a: RecentAnomaly) => (
               <Link
                 key={a.run_number}
                 to={`/comparison?run=${a.run_number}`}
@@ -164,7 +165,7 @@ export default function Dashboard() {
             Equipment Requiring Attention
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {attention_equipment.map((e: any) => (
+            {attention_equipment.map((e: AttentionEquipment) => (
               <Link
                 key={e.furnace}
                 to={`/equipment?furnace=${e.furnace}`}
@@ -189,7 +190,7 @@ export default function Dashboard() {
   );
 }
 
-function KpiCard({ label, value, sub, trend }: { label: string; value: any; sub?: string; trend?: 'up' | 'down' }) {
+function KpiCard({ label, value, sub, trend }: { label: string; value: string | number; sub?: string; trend?: 'up' | 'down' }) {
   return (
     <div className="bg-bg-card border border-border rounded-lg p-3">
       <div className="text-[11px] text-text-muted uppercase tracking-wider">{label}</div>

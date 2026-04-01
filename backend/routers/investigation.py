@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
+from collections import defaultdict
 from backend.db import get_cursor
 
 router = APIRouter(tags=["investigation"])
@@ -344,3 +345,265 @@ def _build_lifecycle(electrode, bake_run, graphite_run):
         steps.append(step)
 
     return steps
+
+
+@router.get("/investigations/{investigation_id}/ai-analysis")
+def ai_root_cause_analysis(investigation_id: int):
+    """Mock GenAI root-cause analysis grounded in real electrode data."""
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM investigations WHERE investigation_id = %s", (investigation_id,))
+        inv = cur.fetchone()
+        if not inv:
+            return {"error": "Investigation not found"}
+        inv = dict(inv)
+
+        # Fetch the electrode and its lifecycle data
+        cur.execute("""
+            SELECT e.*, l.lot_defect_rate, l.risk_tier
+            FROM electrodes e
+            LEFT JOIN lots l ON e.lot = l.lot_id
+            WHERE e.gpn = %s
+        """, (inv["gpn"],))
+        electrode = cur.fetchone()
+        if not electrode:
+            return {"error": "Electrode not found"}
+        electrode = dict(electrode)
+
+        # Get run details
+        bake_run = None
+        if electrode.get("run_number_ob"):
+            cur.execute("SELECT * FROM runs WHERE run_number = %s", (electrode["run_number_ob"],))
+            row = cur.fetchone()
+            if row:
+                bake_run = dict(row)
+
+        graphite_run = None
+        if electrode.get("run_number_og"):
+            cur.execute("SELECT * FROM runs WHERE run_number = %s", (electrode["run_number_og"],))
+            row = cur.fetchone()
+            if row:
+                graphite_run = dict(row)
+
+        # Sibling defect rate
+        sibling_defect_count = 0
+        sibling_total = 0
+        if electrode.get("run_number_og"):
+            cur.execute("""
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN defect_code_og IS NOT NULL OR defect_code_of IS NOT NULL THEN 1 ELSE 0 END) as defects
+                FROM electrodes WHERE run_number_og = %s AND gpn != %s
+            """, (electrode["run_number_og"], inv["gpn"]))
+            sib = cur.fetchone()
+            if sib:
+                sibling_total = sib["total"] or 0
+                sibling_defect_count = sib["defects"] or 0
+
+    # Build analysis paragraphs grounded in actual data
+    factors = []
+    paragraphs = []
+
+    # Paragraph 1: Electrode journey
+    defect_locations = []
+    if electrode.get("defect_code_ob"):
+        defect_locations.append(f"bake ({electrode['defect_code_ob']})")
+    if electrode.get("defect_code_og"):
+        defect_locations.append(f"graphite ({electrode['defect_code_og']})")
+    if electrode.get("defect_code_of"):
+        defect_locations.append(f"finishing ({electrode['defect_code_of']})")
+
+    journey = f"Electrode {inv['gpn']} (lot {electrode['lot']}, {electrode['diameter']}mm diameter, {electrode['coke_blend']} blend) "
+    if bake_run:
+        journey += f"was processed in bake run {bake_run['run_number']} on {bake_run['furnace']}"
+        if graphite_run:
+            journey += f", then graphitized in run {graphite_run['run_number']} on {graphite_run['furnace']}"
+    elif graphite_run:
+        journey += f"was graphitized in run {graphite_run['run_number']} on {graphite_run['furnace']}"
+    journey += ". "
+
+    if defect_locations:
+        journey += f"Defect was detected at: {', '.join(defect_locations)}. "
+    if sibling_total > 0:
+        sibling_rate = sibling_defect_count / sibling_total * 100
+        journey += f"Among {sibling_total} siblings in the same graphite run, {sibling_defect_count} ({sibling_rate:.0f}%) also exhibited defects"
+        if sibling_rate > 30:
+            journey += " — suggesting a systemic process issue rather than an isolated material flaw."
+        else:
+            journey += "."
+    paragraphs.append(journey)
+
+    # Paragraph 2: Risk factors
+    risk_text_parts = []
+
+    if electrode.get("car_deck_ob") and electrode["car_deck_ob"] >= 7:
+        factors.append({
+            "name": "High Car Deck Position",
+            "impact": "high",
+            "detail": f"Deck {electrode['car_deck_ob']} places this electrode in a zone with reduced thermal uniformity. Historical data shows decks 7-9 produce ~40-70% more downstream defects.",
+        })
+        risk_text_parts.append(f"high car deck position (deck {electrode['car_deck_ob']}), which is associated with reduced thermal uniformity")
+
+    if electrode.get("position_og") and electrode["position_og"] in (1, 2, 13, 14):
+        factors.append({
+            "name": "Edge Position",
+            "impact": "high",
+            "detail": f"Position {electrode['position_og']} is an edge slot in the graphite furnace, subject to uneven heat distribution and higher thermal gradients.",
+        })
+        risk_text_parts.append(f"edge position ({electrode['position_og']}) in the graphite furnace, exposed to thermal gradients")
+
+    if electrode.get("risk_tier") == "high":
+        lot_rate = (electrode.get("lot_defect_rate") or 0) * 100
+        factors.append({
+            "name": "High-Risk Lot",
+            "impact": "high",
+            "detail": f"Lot {electrode['lot']} has a historical defect rate of {lot_rate:.1f}%, classifying it as high-risk. Material variability in this lot likely contributes to defect susceptibility.",
+        })
+        risk_text_parts.append(f"membership in high-risk lot {electrode['lot']} (historical defect rate: {lot_rate:.1f}%)")
+    elif electrode.get("lot_defect_rate") and electrode["lot_defect_rate"] > 0.05:
+        lot_rate = electrode["lot_defect_rate"] * 100
+        factors.append({
+            "name": "Elevated Lot Risk",
+            "impact": "medium",
+            "detail": f"Lot {electrode['lot']} has a defect rate of {lot_rate:.1f}%, above the 5% threshold for concern.",
+        })
+        risk_text_parts.append(f"elevated lot defect rate ({lot_rate:.1f}%)")
+
+    if bake_run and bake_run.get("actual_kwh") and bake_run["actual_kwh"] > 50000:
+        factors.append({
+            "name": "High Energy Consumption",
+            "impact": "medium",
+            "detail": f"Bake run consumed {bake_run['actual_kwh']:,.0f} kWh, which may indicate furnace inefficiency or extended cycle time.",
+        })
+        risk_text_parts.append(f"elevated bake energy consumption ({bake_run['actual_kwh']:,.0f} kWh)")
+
+    if bake_run and bake_run.get("total_downtime") and bake_run["total_downtime"] > 2:
+        factors.append({
+            "name": "Excessive Downtime",
+            "impact": "medium",
+            "detail": f"Bake run experienced {bake_run['total_downtime']:.1f} hours of downtime, which can cause thermal cycling stress.",
+        })
+        risk_text_parts.append(f"excessive downtime ({bake_run['total_downtime']:.1f} hrs) causing potential thermal cycling")
+
+    if not factors:
+        factors.append({
+            "name": "No Elevated Risk Factors",
+            "impact": "low",
+            "detail": "No individual risk factors were flagged above threshold. The defect may be due to compounding minor effects or stochastic variation.",
+        })
+
+    if risk_text_parts:
+        risk_para = f"Contributing risk factors include: {'; '.join(risk_text_parts)}. "
+        if len(factors) >= 2:
+            risk_para += "The combination of multiple risk factors increases the probability of defect through compounding effects."
+        paragraphs.append(risk_para)
+    else:
+        paragraphs.append("No individual risk factors exceeded alert thresholds. The defect may stem from compounding minor variations or stochastic material behavior.")
+
+    # Paragraph 3: Recommendation
+    if inv.get("root_cause_category"):
+        rec = f"Given the identified root cause category ({inv['root_cause_category']}), "
+    else:
+        rec = "Based on the available data, "
+
+    recommendations = []
+    if any(f["name"] == "High Car Deck Position" for f in factors):
+        recommendations.append("review car deck loading procedures to avoid placing susceptible electrodes in high-deck positions")
+    if any(f["name"] == "Edge Position" for f in factors):
+        recommendations.append("consider position rotation or adding thermal baffles for edge slots")
+    if any(f["name"] in ("High-Risk Lot", "Elevated Lot Risk") for f in factors):
+        recommendations.append(f"flag lot {electrode['lot']} for enhanced incoming inspection and consider segregating remaining inventory")
+    if any(f["name"] == "Excessive Downtime" for f in factors):
+        recommendations.append("investigate root cause of furnace downtime to prevent thermal cycling damage")
+    if not recommendations:
+        recommendations.append("continue monitoring this electrode family and conduct destructive testing on representative samples")
+
+    rec += "we recommend: " + "; ".join(recommendations) + "."
+    paragraphs.append(rec)
+
+    analysis_text = "\n\n".join(paragraphs)
+    confidence = min(0.92, 0.65 + 0.07 * len(factors))
+    recommendation = recommendations[0].capitalize() + "." if recommendations else "Monitor for recurrence."
+
+    return {
+        "analysis": analysis_text,
+        "confidence": round(confidence, 2),
+        "factors": factors,
+        "recommendation": recommendation,
+    }
+
+
+@router.get("/investigations/{investigation_id}/similar")
+def similar_investigations(investigation_id: int):
+    """Find similar past investigations based on matching attributes."""
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM investigations WHERE investigation_id = %s", (investigation_id,))
+        inv = cur.fetchone()
+        if not inv:
+            return {"error": "Investigation not found"}
+        inv = dict(inv)
+
+        defect_code = inv.get("defect_code")
+        defect_site = inv.get("defect_site")
+        root_cause_category = inv.get("root_cause_category")
+
+        # Find investigations that match on 2+ attributes
+        cur.execute("""
+            SELECT i.*,
+                   (CASE WHEN i.defect_code = %s THEN 1 ELSE 0 END +
+                    CASE WHEN i.defect_site = %s THEN 1 ELSE 0 END +
+                    CASE WHEN i.root_cause_category = %s THEN 1 ELSE 0 END) as match_score
+            FROM investigations i
+            WHERE i.investigation_id != %s
+              AND (CASE WHEN i.defect_code = %s THEN 1 ELSE 0 END +
+                   CASE WHEN i.defect_site = %s THEN 1 ELSE 0 END +
+                   CASE WHEN i.root_cause_category = %s THEN 1 ELSE 0 END) >= 2
+            ORDER BY (CASE WHEN i.defect_code = %s THEN 1 ELSE 0 END +
+                      CASE WHEN i.defect_site = %s THEN 1 ELSE 0 END +
+                      CASE WHEN i.root_cause_category = %s THEN 1 ELSE 0 END) DESC,
+                     i.created_at DESC
+            LIMIT 5
+        """, (
+            defect_code, defect_site, root_cause_category,
+            investigation_id,
+            defect_code, defect_site, root_cause_category,
+            defect_code, defect_site, root_cause_category,
+        ))
+        matches = [dict(r) for r in cur.fetchall()]
+
+        # For each match, get corrective actions and build explanation
+        similar_cases = []
+        for m in matches:
+            match_score = m.pop("match_score", 0)
+            # Build match explanation
+            matched_on = []
+            if m.get("defect_code") == defect_code and defect_code:
+                matched_on.append(f"same defect code ({defect_code})")
+            if m.get("defect_site") == defect_site and defect_site:
+                matched_on.append(f"same defect site ({defect_site})")
+            if m.get("root_cause_category") == root_cause_category and root_cause_category:
+                matched_on.append(f"similar root cause ({root_cause_category})")
+
+            explanation = "Matched on: " + ", ".join(matched_on) if matched_on else "Matched on multiple attributes"
+
+            # Check for effective corrective action
+            cur.execute("""
+                SELECT title, description, status, verification_notes
+                FROM corrective_actions
+                WHERE investigation_id = %s AND status = 'verified'
+                ORDER BY verified_at DESC LIMIT 1
+            """, (m["investigation_id"],))
+            verified_action = cur.fetchone()
+            effective_action = None
+            if verified_action:
+                va = dict(verified_action)
+                effective_action = va["title"]
+                if va.get("verification_notes"):
+                    effective_action += f" — {va['verification_notes']}"
+
+            similar_cases.append({
+                "investigation": m,
+                "match_score": match_score,
+                "match_explanation": explanation,
+                "effective_action": effective_action,
+            })
+
+    return {"similar_cases": similar_cases}
