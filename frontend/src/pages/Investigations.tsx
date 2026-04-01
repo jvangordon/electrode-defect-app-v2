@@ -5,10 +5,10 @@ import { SkeletonTable, SkeletonCard } from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
 import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight, Sparkles } from 'lucide-react';
 import type {
-  InvestigationsResponse, Investigation, InvestigationDetail as InvDetailType,
-  Note, CorrectiveAction, ElectrodeDetailResponse, LifecycleStep,
+  InvestigationsResponse, Investigation,
+  Note, CorrectiveAction, LifecycleStep,
   Sibling, RiskFactor, ElectrodeSearchResult,
-  AiAnalysisResponse, AiAnalysisFactor, SimilarCasesResponse, SimilarCase,
+  AiAnalysisResponse, AiAnalysisFactor, SimilarCase,
 } from '../types';
 
 type View = 'list' | 'detail' | 'electrode';

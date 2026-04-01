@@ -8,7 +8,7 @@ import { AlertTriangle, TrendingUp, ArrowUpRight } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import type { DashboardOverview, FurnaceStatus, RecentAnomaly, AttentionEquipment } from '../types';
+import type { FurnaceStatus, RecentAnomaly, AttentionEquipment } from '../types';
 
 export default function Dashboard() {
   const { data, loading, error } = useApi(() => api.getDashboard(), []);
