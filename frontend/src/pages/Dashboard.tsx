@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
 import { SkeletonCard } from '../components/LoadingSkeleton';
@@ -7,7 +7,7 @@ import ChartTooltip from '../components/ChartTooltip';
 import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter';
 import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, TrendingUp, ArrowUpRight, DollarSign } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -31,6 +31,12 @@ export default function Dashboard() {
   const { data, loading, error } = useApi(() => api.getDashboard(Object.keys(dateParams).length ? dateParams : undefined), [dateRange.startDate, dateRange.endDate]);
   const { isDark } = useTheme();
   const card = useCardClass();
+  const navigate = useNavigate();
+
+  const [activeRun, setActiveRun] = useState<any>(null);
+  useEffect(() => {
+    api.getActiveRun().then(setActiveRun).catch(() => {});
+  }, []);
 
   if (loading) return <DashboardSkeleton />;
   if (error) return <ErrorState message={error} />;
@@ -45,6 +51,31 @@ export default function Dashboard() {
 
   return (
     <div className="p-10 max-w-[1600px] mx-auto space-y-8">
+      {/* Active Run Banner */}
+      {activeRun && activeRun.run_number && (
+        <div
+          onClick={() => navigate('/live')}
+          className="cursor-pointer rounded-xl p-5 mb-6 flex items-center justify-between"
+          style={{
+            background: 'linear-gradient(135deg, #0f2027 0%, #1a1a2e 50%, #16213e 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+          }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+            <div>
+              <span className="font-mono font-bold text-emerald-400">
+                {activeRun.furnace} Run {activeRun.run_number}
+              </span>
+              <span className="text-sm text-gray-400 ml-3">
+                In Progress — {activeRun.total_pieces} electrodes loaded — Status: Monitoring
+              </span>
+            </div>
+          </div>
+          <span className="text-sm text-emerald-400/70">View Live Monitor →</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

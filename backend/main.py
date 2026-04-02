@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from routers import comparison, anomaly, equipment, investigation, dashboard, settings
+from routers import comparison, anomaly, equipment, investigation, dashboard, settings, live
 
 app = FastAPI(title="EDRS — Electrode Defect Reduction System", version="2.0.0")
 
@@ -26,6 +26,7 @@ app.add_middleware(
 # Example: from fastapi.security import HTTPBearer; security = HTTPBearer()
 # Then add Depends(security) to router endpoints that modify data.
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(live.router, prefix="/api")
 app.include_router(comparison.router, prefix="/api")
 app.include_router(anomaly.router, prefix="/api")
 app.include_router(equipment.router, prefix="/api")

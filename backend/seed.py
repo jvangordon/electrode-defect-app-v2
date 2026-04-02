@@ -144,7 +144,8 @@ CREATE TABLE runs (
     defect_rate REAL DEFAULT 0,
     risk_score TEXT,
     defect_cost REAL DEFAULT 0,
-    defect_weight_kg REAL DEFAULT 0
+    defect_weight_kg REAL DEFAULT 0,
+    is_live_demo BOOLEAN DEFAULT false
 );
 
 CREATE TABLE electrodes (
@@ -556,6 +557,10 @@ def seed_runs_and_electrodes(cur, lots):
           AND runs.defect_cost < COALESCE(sub.total_cost, 0)
     """)
     print("  Defect costs computed")
+
+    # Flag GR-00366 as the live demo run
+    cur.execute("UPDATE runs SET is_live_demo = true WHERE run_number = 'GR-00366'")
+    print("  GR-00366 flagged as live demo run")
 
     return all_runs, all_electrodes
 

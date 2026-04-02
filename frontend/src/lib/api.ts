@@ -101,4 +101,9 @@ export const api = {
 
   // Knowledge Search
   searchKnowledge: (q: string) => request<KnowledgeSearchResponse>(`/knowledge/search?q=${encodeURIComponent(q)}`),
+
+  // Live Monitoring
+  getActiveRun: () => request<any>('/runs/active'),
+  getLiveData: (runNumber: string, elapsedMinutes: number) =>
+    request<any>(`/runs/${encodeURIComponent(runNumber)}/live?elapsed_minutes=${elapsedMinutes}`),
 };

@@ -9,6 +9,7 @@ import EquipmentTrending from './pages/EquipmentTrending';
 import Investigations from './pages/Investigations';
 import GeniePage from './pages/GeniePage';
 import Guide from './pages/Guide';
+import LiveMonitor from './pages/LiveMonitor';
 import SettingsPanel from './components/SettingsPanel';
 import KnowledgeSearch from './components/KnowledgeSearch';
 
@@ -62,6 +63,7 @@ function AppShell() {
           <Route path="/anomaly" element={<AnomalyDetection />} />
           <Route path="/equipment" element={<EquipmentTrending />} />
           <Route path="/investigations" element={<Investigations />} />
+          <Route path="/live" element={<LiveMonitor />} />
           <Route path="/guide" element={<Guide onOpenSettings={() => setSettingsOpen(true)} onOpenSearch={() => setSearchOpen(true)} />} />
           {/* /genie handled by persistent shell below */}
           <Route path="/genie" element={null} />
