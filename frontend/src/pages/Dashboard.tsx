@@ -8,10 +8,11 @@ import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter'
 import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { AlertTriangle, TrendingUp, ArrowUpRight, DollarSign } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import { formatCost } from '../lib/format';
 import type { FurnaceStatus, RecentAnomaly, AttentionEquipment } from '../types';
 
 function useCardClass() {
@@ -59,10 +60,13 @@ export default function Dashboard() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-5">
         <KpiCard label="Defect Rate (90d)" value={`${(recent_stats.avg_defect_rate * 100).toFixed(1)}%`}
           trend={recent_stats.avg_defect_rate > 0.05 ? 'up' : 'down'} />
-        <KpiCard label="Total Defects" value={recent_stats.total_defects?.toLocaleString()} />
+        <KpiCard label="Total Defects" value={recent_stats.total_defects?.toLocaleString()}
+          sub={recent_stats.total_defect_cost ? `${formatCost(recent_stats.total_defect_cost)} impact` : undefined} />
+        <KpiCard label="Defect Cost (90d)" value={formatCost(recent_stats.total_defect_cost || 0)}
+          trend={(recent_stats.total_defect_cost || 0) > 50000 ? 'up' : undefined} costHighlight />
         <KpiCard label="Electrodes Produced" value={recent_stats.total_pieces?.toLocaleString()} />
         <KpiCard label="Open Investigations" value={openInvestigations}
           sub={`of ${totalInvestigations} total`} />
@@ -140,6 +144,9 @@ export default function Dashboard() {
                     <DefectRateBadge rate={f.avg_defect_rate} />
                   </div>
                   <div className="text-[13px] mt-1" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>{f.recent_runs} runs</div>
+                  {(f as any).defect_cost > 0 && (
+                    <div className="text-[13px] font-mono mt-0.5" style={{ color: '#f59e0b' }}>{formatCost((f as any).defect_cost)}</div>
+                  )}
                 </Link>
               );
             })}
@@ -178,6 +185,9 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <DefectRateBadge rate={a.defect_rate} />
                   <span className="text-sm" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>{a.defect_count}/{a.total_pieces}</span>
+                  {(a as any).defect_cost > 0 && (
+                    <span className="text-sm font-mono" style={{ color: '#f59e0b' }}>{formatCost((a as any).defect_cost)}</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -221,7 +231,7 @@ export default function Dashboard() {
   );
 }
 
-function KpiCard({ label, value, sub, trend }: { label: string; value: string | number; sub?: string; trend?: 'up' | 'down' }) {
+function KpiCard({ label, value, sub, trend, costHighlight }: { label: string; value: string | number; sub?: string; trend?: 'up' | 'down'; costHighlight?: boolean }) {
   const { isDark } = useTheme();
   const card = isDark
     ? 'bg-[#141824] border border-[#252a3a]'
@@ -229,9 +239,12 @@ function KpiCard({ label, value, sub, trend }: { label: string; value: string | 
 
   return (
     <div className={`${card} rounded-xl p-6`}>
-      <div className="text-sm uppercase tracking-wider font-semibold" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>{label}</div>
+      <div className="text-sm uppercase tracking-wider font-semibold flex items-center gap-1.5" style={{ color: costHighlight ? '#f59e0b' : isDark ? '#6b7280' : '#8b8fa3' }}>
+        {costHighlight && <DollarSign size={14} />}
+        {label}
+      </div>
       <div className="flex items-baseline gap-2 mt-2">
-        <span className="font-mono text-3xl font-bold" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>{value}</span>
+        <span className="font-mono text-3xl font-bold" style={{ color: costHighlight ? '#f59e0b' : isDark ? '#e5e7eb' : '#1a1d2b' }}>{value}</span>
         {trend && (
           <span className={`text-sm ${trend === 'up' ? 'text-danger' : 'text-success'}`}>
             {trend === 'up' ? '↑' : '↓'}

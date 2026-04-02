@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from backend.db import get_cursor
+from db import get_cursor
 
 router = APIRouter(tags=["comparison"])
 
@@ -35,7 +35,9 @@ def list_runs(
             f"""SELECT run_number, department, furnace, profile, load_config,
                        car_deck, total_pieces, total_weight,
                        start_time, end_time, cooling_end_time, duration_hours,
-                       actual_kwh, total_downtime, defect_count, defect_rate, risk_score
+                       actual_kwh, total_downtime, defect_count, defect_rate, risk_score,
+                       COALESCE(defect_cost, 0) as defect_cost,
+                       COALESCE(defect_weight_kg, 0) as defect_weight_kg
                 FROM runs {where}
                 ORDER BY start_time DESC
                 LIMIT %s OFFSET %s""",
@@ -128,6 +130,26 @@ def compare_runs(run_a: str, run_b: str):
             else:
                 sensors_b.append(s)
 
+        # Cost comparison narrative
+        cost_a = ra.get("defect_cost") or 0
+        cost_b = rb.get("defect_cost") or 0
+        weight_a = ra.get("defect_weight_kg") or 0
+        weight_b = rb.get("defect_weight_kg") or 0
+
+        def _fmt_cost(v):
+            if v >= 1000:
+                return f"${v / 1000:.1f}K"
+            return f"${v:.0f}"
+
+        if cost_a > 0 and cost_b > 0:
+            cost_narrative = f"Run A: {_fmt_cost(cost_a)} in defective electrode cost ({weight_a:.0f} kg). Run B: {_fmt_cost(cost_b)} ({weight_b:.0f} kg). Difference: {_fmt_cost(abs(cost_a - cost_b))}."
+        elif cost_a > 0:
+            cost_narrative = f"Run A: {_fmt_cost(cost_a)} in defective electrode cost ({weight_a:.0f} kg). Run B: $0."
+        elif cost_b > 0:
+            cost_narrative = f"Run A: $0 defect cost. Run B: {_fmt_cost(cost_b)} ({weight_b:.0f} kg)."
+        else:
+            cost_narrative = "Neither run had defect-related costs."
+
     return {
         "run_a": runs_data[run_a],
         "run_b": runs_data[run_b],
@@ -136,6 +158,7 @@ def compare_runs(run_a: str, run_b: str):
         "param_diff": param_diff,
         "sensors_a": sensors_a,
         "sensors_b": sensors_b,
+        "cost_narrative": cost_narrative,
     }
 
 

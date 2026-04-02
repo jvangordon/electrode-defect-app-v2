@@ -4,7 +4,8 @@ import { api } from '../lib/api';
 import { SkeletonTable, SkeletonCard } from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
 import { useTheme } from '../App';
-import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight, Sparkles } from 'lucide-react';
+import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight, Sparkles, DollarSign } from 'lucide-react';
+import { formatCost, formatCostFull } from '../lib/format';
 import type {
   InvestigationsResponse, Investigation,
   Note, CorrectiveAction, LifecycleStep,
@@ -267,6 +268,8 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
   if (!data?.investigation) return <div style={{ color: textMuted }}>Investigation not found</div>;
 
   const { investigation: inv, notes, actions } = data;
+  const electrode_cost = (data as any).electrode_cost as number | null;
+  const total_run_defect_cost = (data as any).total_run_defect_cost as number | null;
 
   const statusFlow = ['open', 'in_progress', 'closed', 'verified'];
   const currentIdx = statusFlow.indexOf(inv.status);
@@ -284,6 +287,16 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
             </div>
             <div className="text-sm mt-1" style={{ color: textMuted }}>
               {inv.defect_code} at {inv.defect_site} · Assigned to {inv.assigned_to}
+              {electrode_cost != null && electrode_cost > 0 && (
+                <span className="ml-2 font-mono" style={{ color: '#f59e0b' }}>
+                  · ${formatCostFull(electrode_cost)} electrode
+                </span>
+              )}
+              {total_run_defect_cost != null && total_run_defect_cost > 0 && (
+                <span className="ml-2 font-mono" style={{ color: '#f59e0b' }}>
+                  · ${formatCost(total_run_defect_cost)} run cost
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -465,6 +478,11 @@ function InvestigationDetail({ id, onOpenElectrode, refetchList }: { id: number;
                 {rec.avg_improvement_pct !== null && (
                   <div className="text-[13px] mb-2" style={{ color: textSecondary }}>
                     Avg {rec.avg_improvement_pct > 0 ? '' : '-'}{Math.abs(rec.avg_improvement_pct)}% defect rate {rec.avg_improvement_pct > 0 ? 'reduction' : 'increase'}
+                    {(rec as any).avg_cost_savings != null && (rec as any).avg_cost_savings > 0 && (
+                      <span className="ml-2 font-mono" style={{ color: '#f59e0b' }}>
+                        · avg savings: ${formatCost((rec as any).avg_cost_savings)} per occurrence
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -715,8 +733,14 @@ function ElectrodeDetail({ gpn, onOpenInvestigation }: { gpn: string; onOpenInve
             </table>
           </div>
           {siblings.length > 0 && (
-            <div className="mt-3 text-[13px]" style={{ color: textMuted }}>
-              {siblings.filter((s: Sibling) => s.defect_code_og || s.defect_code_of).length} of {siblings.length} siblings also defective
+            <div className="mt-3 text-[13px] flex items-center justify-between" style={{ color: textMuted }}>
+              <span>{siblings.filter((s: Sibling) => s.defect_code_og || s.defect_code_of).length} of {siblings.length} siblings also defective</span>
+              {(data as any).total_run_defect_cost > 0 && (
+                <span className="font-mono flex items-center gap-1" style={{ color: '#f59e0b' }}>
+                  <DollarSign size={13} />
+                  {formatCost((data as any).total_run_defect_cost)} total run defect cost
+                </span>
+              )}
             </div>
           )}
         </div>

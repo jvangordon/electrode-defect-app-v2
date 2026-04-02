@@ -13,6 +13,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine, Legend,
 } from 'recharts';
+import { formatCost } from '../lib/format';
 import type { EquipmentItem, EquipmentTrendsResponse, EquipmentComparisonItem, MonthlyEquipmentData, TrendPoint } from '../types';
 
 function useCardClass() {
@@ -106,6 +107,9 @@ export default function EquipmentTrending() {
                     <div>
                       <div className="text-sm font-medium" style={{ color: textPrimary }}>{e.furnace}</div>
                       <div className="text-[13px]" style={{ color: textMuted }}>{e.department} · {e.run_count} runs/mo</div>
+                      {(e as any).total_defect_cost > 0 && (
+                        <div className="text-[13px] font-mono" style={{ color: '#f59e0b' }}>{formatCost((e as any).total_defect_cost)} total</div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <DefectRateBadge rate={e.defect_rate} />
@@ -181,6 +185,7 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
     avg_downtime: m.avg_downtime,
     avg_car_deck: m.avg_car_deck,
     run_count: m.run_count,
+    defect_cost: (m as any).defect_cost || 0,
   }));
 
   const trendLineData = trend_line.map((t: TrendPoint) => ({
@@ -222,6 +227,9 @@ function TrendCharts({ data }: { data: EquipmentTrendsResponse }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Defect Cost Trend */}
+      <MetricChart data={chartData} dataKey="defect_cost" name="Monthly Defect Cost ($)" color="#f59e0b" />
 
       {/* Secondary metrics */}
       <div className="grid grid-cols-2 gap-5">

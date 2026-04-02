@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import date, datetime
 import logging
 import psycopg2
-from backend.db import get_cursor
+from db import get_cursor
 
 logger = logging.getLogger("edrs")
 
@@ -113,7 +113,27 @@ def get_investigation(investigation_id: int):
         """, (investigation_id,))
         actions = [dict(r) for r in cur.fetchall()]
 
-    return {"investigation": dict(inv), "notes": notes, "actions": actions}
+        # Add electrode cost info
+        electrode_cost = None
+        total_run_defect_cost = None
+        if inv["gpn"]:
+            cur.execute("SELECT cost_per_defect, diameter FROM electrodes WHERE gpn = %s", (inv["gpn"],))
+            elec_row = cur.fetchone()
+            if elec_row:
+                electrode_cost = elec_row["cost_per_defect"]
+        if inv["run_number"]:
+            cur.execute("SELECT COALESCE(defect_cost, 0) as defect_cost FROM runs WHERE run_number = %s", (inv["run_number"],))
+            run_row = cur.fetchone()
+            if run_row:
+                total_run_defect_cost = run_row["defect_cost"]
+
+    return {
+        "investigation": dict(inv),
+        "notes": notes,
+        "actions": actions,
+        "electrode_cost": electrode_cost,
+        "total_run_defect_cost": total_run_defect_cost,
+    }
 
 
 @router.post("/investigations")
@@ -300,6 +320,14 @@ def get_electrode_detail(gpn: str):
         """, (gpn,))
         investigations = [dict(r) for r in cur.fetchall()]
 
+        # Get total run defect cost for sibling context
+        total_run_defect_cost = None
+        if electrode.get("run_number_og"):
+            cur.execute("SELECT COALESCE(defect_cost, 0) as defect_cost FROM runs WHERE run_number = %s", (electrode["run_number_og"],))
+            row = cur.fetchone()
+            if row:
+                total_run_defect_cost = row["defect_cost"]
+
     return {
         "electrode": electrode,
         "bake_run": bake_run,
@@ -308,6 +336,7 @@ def get_electrode_detail(gpn: str):
         "risk_factors": all_risk_factors,
         "lifecycle": lifecycle,
         "investigations": investigations,
+        "total_run_defect_cost": total_run_defect_cost,
     }
 
 
@@ -524,7 +553,8 @@ def ai_root_cause_analysis(investigation_id: int):
     if electrode.get("defect_code_of"):
         defect_locations.append(f"finishing ({electrode['defect_code_of']})")
 
-    journey = f"Electrode {inv['gpn']} (lot {electrode['lot']}, {electrode['diameter']}mm diameter, {electrode['coke_blend']} blend) "
+    electrode_cost = electrode.get("cost_per_defect") or 0
+    journey = f"Electrode {inv['gpn']} (lot {electrode['lot']}, {electrode['diameter']}mm diameter, {electrode['coke_blend']} blend, defect cost: ${electrode_cost:,.0f}) "
     if bake_run:
         journey += f"was processed in bake run {bake_run['run_number']} on {bake_run['furnace']}"
         if graphite_run:
@@ -542,6 +572,16 @@ def ai_root_cause_analysis(investigation_id: int):
             journey += " — suggesting a systemic process issue rather than an isolated material flaw."
         else:
             journey += "."
+
+    # Add cost context
+    run_cost = 0
+    if graphite_run and graphite_run.get("defect_cost"):
+        run_cost = graphite_run["defect_cost"]
+    elif bake_run and bake_run.get("defect_cost"):
+        run_cost = bake_run["defect_cost"]
+    if run_cost > 0:
+        journey += f" Total defect cost for this run: ${run_cost:,.0f}."
+
     paragraphs.append(journey)
 
     # Paragraph 2: Risk factors
@@ -630,6 +670,8 @@ def ai_root_cause_analysis(investigation_id: int):
         recommendations.append("continue monitoring this electrode family and conduct destructive testing on representative samples")
 
     rec += "we recommend: " + "; ".join(recommendations) + "."
+    if electrode_cost > 0:
+        rec += f" Each defective {electrode['diameter']}mm electrode represents ${electrode_cost:,.0f} in lost value."
     paragraphs.append(rec)
 
     analysis_text = "\n\n".join(paragraphs)
@@ -725,7 +767,8 @@ def similar_investigations(investigation_id: int):
         if similar_inv_ids:
             cur.execute("""
                 SELECT a.action_type, a.title, a.status, a.verified_at,
-                       a.defect_rate_before, a.defect_rate_after
+                       a.defect_rate_before, a.defect_rate_after,
+                       COALESCE(a.actual_savings, a.expected_savings, 0) as savings_value
                 FROM corrective_actions a
                 WHERE a.investigation_id IN %s
             """, (tuple(similar_inv_ids),))
@@ -743,11 +786,14 @@ def similar_investigations(investigation_id: int):
                         "avg_rate_before": [],
                         "avg_rate_after": [],
                         "example_titles": [],
+                        "savings_values": [],
                     }
                 group = action_groups[key]
                 group["total_count"] += 1
                 if action["title"] and action["title"] not in group["example_titles"]:
                     group["example_titles"].append(action["title"])
+                if action["savings_value"] and action["savings_value"] > 0:
+                    group["savings_values"].append(action["savings_value"])
 
                 if action["verified_at"]:
                     if action["defect_rate_after"] is not None and action["defect_rate_before"] is not None:
@@ -766,6 +812,10 @@ def similar_investigations(investigation_id: int):
                     avg_after = sum(group["avg_rate_after"]) / len(group["avg_rate_after"])
                     avg_improvement = round((1 - avg_after / avg_before) * 100, 1) if avg_before > 0 else None
 
+                avg_cost_savings = None
+                if group["savings_values"]:
+                    avg_cost_savings = round(sum(group["savings_values"]) / len(group["savings_values"]), 0)
+
                 recommendations.append({
                     "action_type": key,
                     "total_count": group["total_count"],
@@ -773,6 +823,7 @@ def similar_investigations(investigation_id: int):
                     "verified_ineffective": group["verified_ineffective"],
                     "success_rate": round(success_rate, 2),
                     "avg_improvement_pct": avg_improvement,
+                    "avg_cost_savings": avg_cost_savings,
                     "example_titles": group["example_titles"][:3],
                     "is_recommended": success_rate >= 0.6 and group["verified_effective"] >= 2,
                     "is_ineffective": group["verified_ineffective"] > group["verified_effective"],

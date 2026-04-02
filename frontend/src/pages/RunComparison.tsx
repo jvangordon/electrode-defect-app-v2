@@ -13,6 +13,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   ScatterChart, Scatter, ZAxis,
 } from 'recharts';
+import { formatCost } from '../lib/format';
 import type { Run, Electrode, ComparisonResult, ParamDiff, SensorReading } from '../types';
 
 function useCardClass() {
@@ -437,6 +438,7 @@ function RunTable({ runs, department, selectedRuns, onToggleRun, maxHeight = 'ma
 
 function ComparisonView({ data, department, onBack }: { data: ComparisonResult; department: string; onBack: () => void }) {
   const { run_a, run_b, electrodes_a, electrodes_b, param_diff, sensors_a, sensors_b } = data;
+  const cost_narrative = (data as any).cost_narrative as string | undefined;
   const { isDark } = useTheme();
   const card = useCardClass();
   const gridStroke = isDark ? '#252a3a' : '#e2e5eb';
@@ -476,6 +478,14 @@ function ComparisonView({ data, department, onBack }: { data: ComparisonResult; 
         <RunHeader run={run_a} label="Run A" electrodes={electrodes_a} />
         <RunHeader run={run_b} label="Run B" electrodes={electrodes_b} />
       </div>
+
+      {/* Cost comparison */}
+      {cost_narrative && (
+        <div className={`${card} p-5 flex items-center gap-3`}>
+          <span className="text-sm font-semibold" style={{ color: '#f59e0b' }}>Cost Impact:</span>
+          <span className="text-sm" style={{ color: textSecondary }}>{cost_narrative}</span>
+        </div>
+      )}
 
       {/* Parameter diff */}
       <div className={`${card} overflow-hidden`}>
@@ -576,7 +586,7 @@ function RunHeader({ run, label, electrodes }: { run: Run; label: string; electr
       </div>
       <div className="font-mono text-xl font-semibold" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>{run.run_number}</div>
       <div className="text-sm mt-1" style={{ color: isDark ? '#9ca3af' : '#4b5068' }}>{run.furnace} &middot; {run.department}</div>
-      <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+      <div className="grid grid-cols-4 gap-4 mt-4 text-sm">
         <div>
           <div className="text-[13px]" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>Pieces</div>
           <div className="font-mono text-base mt-0.5" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>{run.total_pieces}</div>
@@ -588,6 +598,12 @@ function RunHeader({ run, label, electrodes }: { run: Run; label: string; electr
         <div>
           <div className="text-[13px]" style={{ color: isDark ? '#6b7280' : '#8b8fa3' }}>kWh</div>
           <div className="font-mono text-base mt-0.5" style={{ color: isDark ? '#e5e7eb' : '#1a1d2b' }}>{run.actual_kwh?.toLocaleString()}</div>
+        </div>
+        <div>
+          <div className="text-[13px]" style={{ color: '#f59e0b' }}>Defect Cost</div>
+          <div className="font-mono text-base mt-0.5" style={{ color: '#f59e0b' }}>
+            {(run as any).defect_cost ? formatCost((run as any).defect_cost) : '$0'}
+          </div>
         </div>
       </div>
     </div>

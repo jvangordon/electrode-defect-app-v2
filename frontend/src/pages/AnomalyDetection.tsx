@@ -12,6 +12,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, ScatterChart, Scatter, Cell,
 } from 'recharts';
+import { formatCost } from '../lib/format';
 import type { BakeAnomaly, Deviation, GraphiteAssessment, Quintile, CompositionElectrode } from '../types';
 
 function useCardClass() {
@@ -167,6 +168,7 @@ function BakeAnomalies({ dateParams }: { dateParams: Record<string, string> }) {
                 <th className="px-5 py-4 text-center">Severity</th>
                 <th className="px-5 py-4 text-right">Car Deck</th>
                 <th className="px-5 py-4 text-right pr-6">Rate</th>
+                <th className="px-5 py-4 text-right" style={{ color: '#f59e0b' }}>Cost Exposure</th>
                 <th className="px-5 py-4 text-left pl-6">Deviations</th>
               </tr>
             </thead>
@@ -179,6 +181,9 @@ function BakeAnomalies({ dateParams }: { dateParams: Record<string, string> }) {
                   <td className="px-5 py-4 text-center">{a.severity && <StatusBadge status={a.severity} />}</td>
                   <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>{a.car_deck}</td>
                   <td className="px-5 py-4 text-right"><DefectRateBadge rate={a.defect_rate} /></td>
+                  <td className="px-5 py-4 text-right font-mono" style={{ color: '#f59e0b' }}>
+                    {(a as any).estimated_cost_exposure > 0 ? formatCost((a as any).estimated_cost_exposure) : '—'}
+                  </td>
                   <td className="px-5 py-4">
                     <div className="flex flex-wrap gap-2">
                       {a.deviations.map((d: Deviation, i: number) => (
@@ -265,6 +270,7 @@ function GraphiteRisk() {
                   <th className="px-5 py-4 text-left">Furnace</th>
                   <th className="px-5 py-4 text-center">Risk</th>
                   <th className="px-5 py-4 text-right">Rate</th>
+                  <th className="px-5 py-4 text-right" style={{ color: '#f59e0b' }}>Cost</th>
                   <th className="px-5 py-4 text-right">Hi-Risk Lots</th>
                 </tr>
               </thead>
@@ -279,6 +285,9 @@ function GraphiteRisk() {
                     <td className="px-5 py-4" style={{ color: textSecondary }}>{a.furnace}</td>
                     <td className="px-5 py-4 text-center"><StatusBadge status={a.risk_score || 'no_data'} /></td>
                     <td className="px-5 py-4 text-right"><DefectRateBadge rate={a.defect_rate} /></td>
+                    <td className="px-5 py-4 text-right font-mono" style={{ color: '#f59e0b' }}>
+                      {(a as any).estimated_cost_exposure > 0 ? formatCost((a as any).estimated_cost_exposure) : '—'}
+                    </td>
                     <td className="px-5 py-4 text-right font-mono" style={{ color: textPrimary }}>
                       {a.composition?.high_risk_lot_count || 0}/{a.composition?.total_electrodes || 0}
                     </td>

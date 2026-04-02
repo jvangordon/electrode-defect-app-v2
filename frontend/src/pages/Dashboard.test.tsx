@@ -11,6 +11,7 @@ const mockDashboardData: DashboardOverview = {
     total_defects: 1520,
     total_pieces: 38400,
     total_weight: 123456,
+    total_defect_cost: 45200,
   },
   monthly_trend: [
     { month: '2025-10-01', defect_rate: 0.045, run_count: 120, defect_count: 250 },

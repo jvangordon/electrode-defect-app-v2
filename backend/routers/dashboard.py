@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from typing import Optional
-from backend.db import get_cursor
+from db import get_cursor
 
 router = APIRouter(tags=["dashboard"])
 
@@ -31,7 +31,8 @@ def dashboard_overview(
                 AVG(defect_rate) as avg_defect_rate,
                 SUM(defect_count) as total_defects,
                 SUM(total_pieces) as total_pieces,
-                SUM(total_weight) as total_weight
+                SUM(total_weight) as total_weight,
+                SUM(COALESCE(defect_cost, 0)) as total_defect_cost
             FROM runs
             WHERE start_time > NOW() - INTERVAL '90 days'
             {date_filter}
@@ -44,7 +45,8 @@ def dashboard_overview(
                 DATE_TRUNC('month', start_time)::date as month,
                 AVG(defect_rate) as defect_rate,
                 COUNT(*) as run_count,
-                SUM(defect_count) as defect_count
+                SUM(defect_count) as defect_count,
+                SUM(COALESCE(defect_cost, 0)) as defect_cost
             FROM runs
             WHERE start_time > NOW() - INTERVAL '6 months'
             {date_filter}
@@ -57,6 +59,7 @@ def dashboard_overview(
         cur.execute(f"""
             WITH recent AS (
                 SELECT furnace, department, defect_rate, defect_count, total_pieces,
+                       COALESCE(defect_cost, 0) as defect_cost,
                        ROW_NUMBER() OVER (PARTITION BY furnace ORDER BY start_time DESC) as rn
                 FROM runs
                 WHERE start_time > NOW() - INTERVAL '60 days'
@@ -67,7 +70,8 @@ def dashboard_overview(
                        AVG(defect_rate) as avg_defect_rate,
                        SUM(defect_count) as recent_defects,
                        SUM(total_pieces) as recent_pieces,
-                       COUNT(*) as recent_runs
+                       COUNT(*) as recent_runs,
+                       SUM(defect_cost) as defect_cost
                 FROM recent WHERE rn <= 5
                 GROUP BY furnace, department
             )
@@ -95,7 +99,8 @@ def dashboard_overview(
         # Recent anomalies (high-defect runs)
         cur.execute(f"""
             SELECT run_number, department, furnace, defect_rate, defect_count,
-                   total_pieces, start_time, risk_score
+                   total_pieces, start_time, risk_score,
+                   COALESCE(defect_cost, 0) as defect_cost
             FROM runs
             WHERE defect_rate > 0.08
             {date_filter}

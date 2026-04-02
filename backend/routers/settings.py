@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from backend.db import get_cursor
+from db import get_cursor
 
 router = APIRouter(tags=["settings"])
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from backend.db import get_cursor
+from db import get_cursor
 
 router = APIRouter(tags=["equipment"])
 
@@ -48,6 +48,14 @@ def list_equipment(
         """, params)
         equipment = [dict(r) for r in cur.fetchall()]
 
+        # Add total_defect_cost per furnace from runs
+        for eq in equipment:
+            cur.execute("""
+                SELECT COALESCE(SUM(defect_cost), 0) as total_defect_cost
+                FROM runs WHERE furnace = %s
+            """, (eq["furnace"],))
+            eq["total_defect_cost"] = cur.fetchone()["total_defect_cost"]
+
     return {"equipment": equipment}
 
 
@@ -56,12 +64,19 @@ def equipment_trends(furnace: str):
     """Monthly trend data for a specific piece of equipment."""
     with get_cursor() as cur:
         cur.execute("""
-            SELECT month, department, defect_rate, avg_kwh, avg_run_time,
-                   avg_downtime, avg_car_deck, run_count, trend_slope, trend_pvalue
-            FROM equipment_monthly
-            WHERE furnace = %s
-            ORDER BY month
-        """, (furnace,))
+            SELECT em.month, em.department, em.defect_rate, em.avg_kwh, em.avg_run_time,
+                   em.avg_downtime, em.avg_car_deck, em.run_count, em.trend_slope, em.trend_pvalue,
+                   COALESCE(cost_agg.monthly_defect_cost, 0) as defect_cost
+            FROM equipment_monthly em
+            LEFT JOIN LATERAL (
+                SELECT SUM(COALESCE(defect_cost, 0)) as monthly_defect_cost
+                FROM runs
+                WHERE furnace = %s
+                  AND DATE_TRUNC('month', start_time)::date = em.month
+            ) cost_agg ON true
+            WHERE em.furnace = %s
+            ORDER BY em.month
+        """, (furnace, furnace))
         monthly = [dict(r) for r in cur.fetchall()]
 
         if not monthly:
@@ -93,7 +108,8 @@ def equipment_trends(furnace: str):
         cur.execute("""
             SELECT run_number, defect_rate, defect_count, total_pieces,
                    start_time, duration_hours, actual_kwh, total_downtime,
-                   car_deck, profile, risk_score
+                   car_deck, profile, risk_score,
+                   COALESCE(defect_cost, 0) as defect_cost
             FROM runs
             WHERE furnace = %s
             ORDER BY start_time DESC
@@ -134,6 +150,29 @@ def equipment_comparison(department: Optional[str] = None):
             ORDER BY furnace, month DESC
         """, params)
         current = [dict(r) for r in cur.fetchall()]
+
+        # Add cost fields to each furnace in comparison
+        for item in current:
+            cur.execute("""
+                SELECT COALESCE(SUM(defect_cost), 0) as total_defect_cost,
+                       COUNT(*) as total_runs,
+                       COALESCE(AVG(defect_cost), 0) as avg_cost_per_run,
+                       MIN(start_time) as first_run,
+                       MAX(start_time) as last_run
+                FROM runs WHERE furnace = %s
+            """, (item["furnace"],))
+            cost_row = dict(cur.fetchone())
+            item["total_defect_cost"] = cost_row["total_defect_cost"]
+            item["avg_cost_per_run"] = round(cost_row["avg_cost_per_run"], 2)
+            total_runs = cost_row["total_runs"]
+            first_run = cost_row["first_run"]
+            last_run = cost_row["last_run"]
+            if total_runs > 1 and first_run and last_run:
+                days_span = max((last_run - first_run).days, 1)
+                runs_per_year = total_runs / days_span * 365
+                item["estimated_annual_cost"] = round(cost_row["avg_cost_per_run"] * runs_per_year, 2)
+            else:
+                item["estimated_annual_cost"] = 0
 
         # Monthly data for overlay chart
         cur.execute(f"""

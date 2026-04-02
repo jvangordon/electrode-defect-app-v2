@@ -46,6 +46,16 @@ LOAD_CONFIGS = ["Full-14", "Partial-10", "Mixed-12", "Full-14-HD"]
 DIAMETERS = [300, 350, 400, 450, 500, 550, 600]
 COKE_BLENDS = ["Premium-A", "Standard-B", "Economy-C", "Blend-D"]
 
+COST_PER_DEFECT = {
+    300: 450,
+    350: 652,
+    400: 1414,
+    450: 2316,
+    500: 2652,
+    550: 2900,
+    600: 3121,
+}
+
 DEFECT_CODES = ["CR-1", "CR-2", "SP-1", "SP-2", "BK-1", "LN-1", "PR-1", "SFC-1"]
 DEFECT_NAMES = {
     "CR-1": "Longitudinal crack",
@@ -132,7 +142,9 @@ CREATE TABLE runs (
     total_downtime REAL DEFAULT 0,
     defect_count INTEGER DEFAULT 0,
     defect_rate REAL DEFAULT 0,
-    risk_score TEXT
+    risk_score TEXT,
+    defect_cost REAL DEFAULT 0,
+    defect_weight_kg REAL DEFAULT 0
 );
 
 CREATE TABLE electrodes (
@@ -153,7 +165,8 @@ CREATE TABLE electrodes (
     defect_code_og TEXT,
     defect_code_of TEXT,
     er REAL,
-    ad REAL
+    ad REAL,
+    cost_per_defect REAL
 );
 
 CREATE TABLE sensor_readings (
@@ -384,7 +397,7 @@ def seed_runs_and_electrodes(cur, lots):
                         gpn, lot, f"MO-{bake_idx:04d}", diameter, blend, weight,
                         run_number, car_deck, pos, defect_code,
                         None, None, None, None, None, None,
-                        er, ad,
+                        er, ad, COST_PER_DEFECT.get(diameter, 0),
                     ))
 
                 defect_rate = round(defect_count / pieces, 4) if pieces > 0 else 0
@@ -475,7 +488,7 @@ def seed_runs_and_electrodes(cur, lots):
                         None,  # bake defect code (most pass bake)
                         run_number, furnace, pos, profile,
                         defect_code_g, defect_code_f,
-                        er, ad,
+                        er, ad, COST_PER_DEFECT.get(diameter, 0),
                     ))
 
                 defect_rate = round(defect_count / pieces, 4) if pieces > 0 else 0
@@ -505,11 +518,45 @@ def seed_runs_and_electrodes(cur, lots):
         """INSERT INTO electrodes (gpn, lot, mo_name, diameter, coke_blend, weight_kg,
            run_number_ob, car_deck_ob, load_order_ob, defect_code_ob,
            run_number_og, furnace_og, position_og, profile_og,
-           defect_code_og, defect_code_of, er, ad)
+           defect_code_og, defect_code_of, er, ad, cost_per_defect)
            VALUES %s""",
         all_electrodes,
     )
     print(f"  {len(all_electrodes)} electrodes created")
+
+    # Compute defect_cost and defect_weight_kg on runs
+    print("  Computing defect costs on runs...")
+    cur.execute("""
+        UPDATE runs SET defect_cost = COALESCE(sub.total_cost, 0),
+                       defect_weight_kg = COALESCE(sub.total_weight, 0)
+        FROM (
+            SELECT run_number_og as run_number,
+                   SUM(cost_per_defect) as total_cost,
+                   SUM(weight_kg) as total_weight
+            FROM electrodes
+            WHERE defect_code_ob IS NOT NULL
+               OR defect_code_og IS NOT NULL
+               OR defect_code_of IS NOT NULL
+            GROUP BY run_number_og
+        ) sub
+        WHERE runs.run_number = sub.run_number
+    """)
+    cur.execute("""
+        UPDATE runs SET defect_cost = GREATEST(runs.defect_cost, COALESCE(sub.total_cost, 0)),
+                       defect_weight_kg = GREATEST(runs.defect_weight_kg, COALESCE(sub.total_weight, 0))
+        FROM (
+            SELECT run_number_ob as run_number,
+                   SUM(cost_per_defect) as total_cost,
+                   SUM(weight_kg) as total_weight
+            FROM electrodes
+            WHERE defect_code_ob IS NOT NULL
+            GROUP BY run_number_ob
+        ) sub
+        WHERE runs.run_number = sub.run_number
+          AND runs.defect_cost < COALESCE(sub.total_cost, 0)
+    """)
+    print("  Defect costs computed")
+
     return all_runs, all_electrodes
 
 

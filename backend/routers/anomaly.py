@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional
-from backend.db import get_cursor
+from db import get_cursor
 
 router = APIRouter(tags=["anomaly"])
 
@@ -43,7 +43,8 @@ def bake_anomalies(
             SELECT run_number, furnace, car_deck, profile,
                    total_pieces, total_weight, duration_hours,
                    actual_kwh, total_downtime,
-                   defect_count, defect_rate, start_time
+                   defect_count, defect_rate, start_time,
+                   COALESCE(defect_cost, 0) as defect_cost
             FROM runs
             WHERE department = 'bake'
             {date_filter}
@@ -122,11 +123,15 @@ def bake_anomalies(
             else:
                 severity = None
 
+            # Estimated cost exposure: sum of cost_per_defect for all electrodes in this run
+            estimated_cost_exposure = run.get("defect_cost", 0)
+
             anomalies.append({
                 **run,
                 "deviations": deviations,
                 "severity": severity,
                 "is_anomaly": len(deviations) > 0,
+                "estimated_cost_exposure": estimated_cost_exposure,
             })
 
         # SPC chart data (car_deck and defect_rate over time)
@@ -163,7 +168,8 @@ def graphite_risk_assessments(limit: int = Query(50, le=200)):
             SELECT run_number, furnace, profile, load_config,
                    total_pieces, total_weight, duration_hours,
                    actual_kwh, total_downtime,
-                   defect_count, defect_rate, risk_score, start_time
+                   defect_count, defect_rate, risk_score, start_time,
+                   COALESCE(defect_cost, 0) as defect_cost
             FROM runs
             WHERE department = 'graphite'
             ORDER BY start_time DESC
@@ -179,7 +185,7 @@ def graphite_risk_assessments(limit: int = Query(50, le=200)):
                 SELECT e.gpn, e.lot, e.position_og, e.diameter, e.coke_blend,
                        e.defect_code_og, e.defect_code_of,
                        l.lot_defect_rate, l.risk_tier,
-                       e.run_number_og
+                       e.run_number_og, COALESCE(e.cost_per_defect, 0) as cost_per_defect
                 FROM electrodes e
                 LEFT JOIN lots l ON e.lot = l.lot_id
                 WHERE e.run_number_og IN %s
@@ -198,6 +204,9 @@ def graphite_risk_assessments(limit: int = Query(50, le=200)):
             edge_positions = sum(1 for e in electrodes if e.get("position_og") in (1, 2, 13, 14))
             avg_lot_risk = sum(e.get("lot_defect_rate", 0) or 0 for e in electrodes) / max(len(electrodes), 1)
 
+            # Estimated cost exposure: sum of cost_per_defect for electrodes in this run
+            total_electrode_cost = sum(e.get("cost_per_defect", 0) or 0 for e in electrodes)
+
             run["composition"] = {
                 "electrodes": electrodes,
                 "high_risk_lot_count": high_risk_lots,
@@ -205,6 +214,8 @@ def graphite_risk_assessments(limit: int = Query(50, le=200)):
                 "avg_lot_defect_rate": round(avg_lot_risk, 4),
                 "total_electrodes": len(electrodes),
             }
+            run["estimated_cost_exposure"] = run.get("defect_cost", 0)
+            run["total_lineup_cost"] = total_electrode_cost
 
         # Risk quintile reference
         cur.execute("SELECT * FROM composition_risk ORDER BY quintile")

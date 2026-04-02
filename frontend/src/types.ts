@@ -70,6 +70,7 @@ export interface RecentStats {
   total_defects: number;
   total_pieces: number;
   total_weight: number;
+  total_defect_cost: number;
 }
 
 export interface MonthlyTrend {

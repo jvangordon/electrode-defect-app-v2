@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.routers import comparison, anomaly, equipment, investigation, dashboard, settings
+from routers import comparison, anomaly, equipment, investigation, dashboard, settings
 
 app = FastAPI(title="EDRS — Electrode Defect Reduction System", version="2.0.0")
 
