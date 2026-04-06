@@ -12,6 +12,7 @@ import Guide from './pages/Guide';
 import LiveMonitor from './pages/LiveMonitor';
 import SettingsPanel from './components/SettingsPanel';
 import KnowledgeSearch from './components/KnowledgeSearch';
+import AlertBanner from './components/AlertBanner';
 
 interface ThemeContextType {
   isDark: boolean;
@@ -57,6 +58,7 @@ function AppShell() {
           display: isGeniePage ? 'none' : undefined,
         }}
       >
+        <AlertBanner />
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/comparison" element={<RunComparison />} />

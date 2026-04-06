@@ -8,6 +8,7 @@ import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter'
 import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
 import { AlertTriangle } from 'lucide-react';
+import ExportCSV from '../components/ExportCSV';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine, ScatterChart, Scatter, Cell,
@@ -154,7 +155,8 @@ function BakeAnomalies({ dateParams }: { dateParams: Record<string, string> }) {
       <div className={`${card} overflow-hidden`}>
         <div className="px-6 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}>
           <AlertTriangle size={16} className="text-warning" />
-          <h3 className="text-lg font-semibold" style={{ color: textSecondary }}>Flagged Anomalous Runs ({flagged.length})</h3>
+          <h3 className="text-lg font-semibold flex-1" style={{ color: textSecondary }}>Flagged Anomalous Runs ({flagged.length})</h3>
+          <ExportCSV data={flagged} filename="anomalous_runs" />
         </div>
         <div className="max-h-[400px] overflow-y-auto">
           <table className="w-full text-sm">

@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { formatCost } from '../lib/format';
 import type { EquipmentItem, EquipmentTrendsResponse, EquipmentComparisonItem, MonthlyEquipmentData, TrendPoint } from '../types';
+import ExportCSV from '../components/ExportCSV';
 
 function useCardClass() {
   const { isDark } = useTheme();
@@ -85,7 +86,10 @@ export default function EquipmentTrending() {
         {/* Equipment list */}
         <div className={`${card} overflow-hidden`}>
           <div className="px-5 py-4" style={{ borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}>
-            <h3 className="text-[14px] font-semibold tracking-wide" style={{ color: textSecondary }}>Equipment (sorted by defect rate)</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-[14px] font-semibold tracking-wide flex-1" style={{ color: textSecondary }}>Equipment (sorted by defect rate)</h3>
+              <ExportCSV data={equipment} filename="equipment_ranking" />
+            </div>
           </div>
           {equipLoading ? <div className="p-4 space-y-3">{Array.from({length: 8}).map((_, i) => <SkeletonCard key={i} height="h-14" />)}</div> : (
             <div className="max-h-[600px] overflow-y-auto">

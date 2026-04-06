@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import { useTheme } from '../App';
 import { Search, MessageSquare, CheckCircle2, Clock, ChevronRight, Sparkles, DollarSign } from 'lucide-react';
 import { formatCost, formatCostFull } from '../lib/format';
+import ExportCSV from '../components/ExportCSV';
 import type {
   InvestigationsResponse, Investigation,
   Note, CorrectiveAction, LifecycleStep,
@@ -155,6 +156,9 @@ function InvestigationList({ invData, invLoading, statusFilter, setStatusFilter,
 
       {/* Investigation table */}
       <div className={`${card} overflow-hidden`}>
+        <div className="px-6 py-3 flex items-center justify-end" style={{ borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}>
+          <ExportCSV data={invData?.investigations || []} filename="investigations" />
+        </div>
         {invLoading ? <div className="p-6"><SkeletonTable rows={8} /></div> : (
           <div className="max-h-[540px] overflow-y-auto">
             <table className="w-full text-sm">
