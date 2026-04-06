@@ -9,6 +9,7 @@ import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
 import { Link, useNavigate } from 'react-router-dom';
 import { AlertTriangle, TrendingUp, ArrowUpRight, DollarSign } from 'lucide-react';
+import PriorityActions from '../components/PriorityActions';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -75,6 +76,9 @@ export default function Dashboard() {
           <span className="text-sm text-emerald-400/70">View Live Monitor →</span>
         </div>
       )}
+
+      {/* Priority Actions — what needs attention right now */}
+      <PriorityActions />
 
       {/* Header */}
       <div className="flex items-center justify-between">
