@@ -117,6 +117,32 @@ export default function Sidebar({ onOpenSettings, onOpenSearch }: { onOpenSettin
         )}
       </div>
 
+      {/* Filters */}
+      {!collapsed && (
+        <div className="px-4 py-3 border-t border-[#1e2130] space-y-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-[#6b7280] font-semibold">Plant</label>
+            <select className="mt-0.5 w-full bg-[#141722] text-[#8b8fa3] text-xs rounded-lg px-2.5 py-2 border border-[#1e2130] focus:outline-none focus:border-amber-500/50">
+              <option value="">All Plants</option>
+              <option value="HKM">Hickman (HKM)</option>
+              <option value="OZK">Ozark (OZK)</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-wider text-[#6b7280] font-semibold">Department</label>
+            <select className="mt-0.5 w-full bg-[#141722] text-[#8b8fa3] text-xs rounded-lg px-2.5 py-2 border border-[#1e2130] focus:outline-none focus:border-amber-500/50">
+              <option value="">All Departments</option>
+              <option value="extrusion">Extrusion</option>
+              <option value="bake">Bake</option>
+              <option value="pi">PI (Impregnation)</option>
+              <option value="rebake">Rebake</option>
+              <option value="graphite">Graphitization</option>
+              <option value="finishing">Finishing</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="mt-auto border-t border-[#1e2130]">
         {!collapsed && (

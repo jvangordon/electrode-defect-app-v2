@@ -8,6 +8,7 @@ import DateRangeFilter, { getInitialRange } from '../components/DateRangeFilter'
 import type { DateRange } from '../components/DateRangeFilter';
 import { useTheme } from '../App';
 import { useLocation } from 'react-router-dom';
+import ExportCSV from '../components/ExportCSV';
 import { GitCompareArrows, TrendingUp } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -326,7 +327,10 @@ function FurnaceTrend({ runs, loading, furnace, department, selectedRuns, onDotC
       {/* Mini run table */}
       <div className={`${card} overflow-hidden`}>
         <div className="px-6 py-3" style={{ borderBottom: `1px solid ${isDark ? '#252a3a' : '#e2e5eb'}` }}>
-          <div className="text-sm font-semibold" style={{ color: textSecondary }}>Run List — {furnace}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold flex-1" style={{ color: textSecondary }}>Run List — {furnace}</div>
+            <ExportCSV data={runs} filename={`runs_${furnace}`} />
+          </div>
         </div>
         <RunTable runs={runs} department={department} selectedRuns={selectedRuns} onToggleRun={onToggleRun} maxHeight="max-h-[320px]" />
       </div>
